@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package publish;
+
+import "google/protobuf/timestamp.proto";
+
+service Publish {
+    rpc Send (PublishRequest) returns (PublishResponse);
+}
+
+message PublishRequest {
+    string event = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+message PublishResponse {
+    string response = 1;
+}
