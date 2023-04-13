@@ -4,15 +4,15 @@ package publish;
 
 import "google/protobuf/timestamp.proto";
 
-service Publish {
-    rpc Send (PublishRequest) returns (PublishResponse);
+service PublishToBroker {
+    rpc Send (PublishDataToBroker) returns (BrokerToPublisherAck);
 }
 
-message PublishRequest {
-    string event = 1;
+message PublishDataToBroker {
+    string event_name = 1;
     google.protobuf.Timestamp timestamp = 2;
 }
 
-message PublishResponse {
-    string response = 1;
+message BrokerToPublisherAck {
+    string response_to_producer = 1;
 }

@@ -1,8 +1,11 @@
 mod publish {
+    //this compiles the publish.proto file and generates a rust code for the gRPC services
+    //we then import this rust code below
     tonic::include_proto!("publish");
 }
-use publish::publish_client::PublishClient;
-use publish::PublishRequest;
+use publish::publish_to_broker_client::PublishToBrokerClient;
+use publish::PublishDataToBroker;
+
 use prost_types::Timestamp;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -13,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect()
         .await?;
     // creating gRPC client from channel
-    let mut client = PublishClient::new(channel);
+    let mut client_connection_to_broker = PublishToBrokerClient::new(channel);
 
     // getting the current time as a Duration since UNIX_EPOCH
     let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
@@ -24,13 +27,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         nanos: now.subsec_nanos() as i32,
     };
 
-    // creating a new Request
-    let request = tonic::Request::new(PublishRequest {
-        event: String::from("first"),
+    // creating a new Request to send to broker
+    let data_to_broker = tonic::Request::new(PublishDataToBroker {
+        event_name: String::from("elon musk tweet"),
         timestamp: Some(timestamp),
     });
-    // sending request and waiting for response
-    let response = client.send(request).await?.into_inner();
-    println!("RESPONSE={:?}", response);
+    // sending data_to_broker and waiting for response
+    let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
+    println!("RESPONSE={:?}", ack_from_broker);
     Ok(())
 }
