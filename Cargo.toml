@@ -11,9 +11,9 @@ path = "src/producer/main.rs"
 #name = "consumer"
 #path = "src/consumer/main.rs"
 
-[[bin]]
-name = "broker"
-path = "src/broker/main.rs"
+#[[bin]]
+#name = "broker"
+#path = "src/broker/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -23,6 +23,7 @@ tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
 prost = "0.11.8"
 prost-types = "0.11.8"
 chrono = "0.4.24"
+rand = "0.8.4"
 
 [build-dependencies]
 tonic-build = "0.9.1"

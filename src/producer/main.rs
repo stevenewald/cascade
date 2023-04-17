@@ -8,6 +8,8 @@ use publish::PublishDataToBroker;
 
 use prost_types::Timestamp;
 use std::time::{SystemTime, UNIX_EPOCH};
+use rand::Rng;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,12 +30,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // creating a new Request to send to broker
+    let mut rng = rand::thread_rng();
     let data_to_broker = tonic::Request::new(PublishDataToBroker {
-        event_name: String::from("elon musk tweet"),
+        event_name: String::from("default"),
         timestamp: Some(timestamp),
+        number: rng.gen::<i32>(), // set the number field to a random integer
+
     });
     // sending data_to_broker and waiting for response
     let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
     println!("RESPONSE={:?}", ack_from_broker);
     Ok(())
 }
+
+
