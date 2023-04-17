@@ -11,6 +11,7 @@ service PublishToBroker {
 message PublishDataToBroker {
     string event_name = 1;
     google.protobuf.Timestamp timestamp = 2;
+    int32 number = 3;
 }
 
 message BrokerToPublisherAck {

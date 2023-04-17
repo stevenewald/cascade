@@ -71,7 +71,7 @@ impl PublishToBroker for BrokerServer {
 
         Ok(Response::new(BrokerToPublisherAck {
             // reading data from request which is awrapper around our PublishDataToBroker message defined in .proto
-            response_to_producer: format!("Broker response: received event with name {} and timestamp {}", data_received.get_ref().event_name, timestamp_to_string(data_received.get_ref().timestamp.clone())),
+            response_to_producer: format!("Broker response: received event with name {} and timestamp {} and number {}", data_received.get_ref().event_name, timestamp_to_string(data_received.get_ref().timestamp.clone()), data_received.get_ref().number.to_string()),
         }))
     }
 }
