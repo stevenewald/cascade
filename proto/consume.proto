@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package consume;
+
+import "google/protobuf/timestamp.proto";
+
+service ConsumeFromBroker {
+    rpc Send (ConsumeDataFromBroker) returns (BrokerToConsumerAck);
+}
+
+message ConsumeDataFromBroker {
+    string event_name = 1;
+    #google.protobuf.Timestamp timestamp = 2;
+    int32 number = 2;
+}
+
+message Pair {
+    string event_name = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+message BrokerToConsumerAck {
+    #string response_to_consumer = 1;
+    repeated Pair pair = 1;
+}

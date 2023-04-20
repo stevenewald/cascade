@@ -1,7 +1,7 @@
 mod publish {
     //this compiles the publish.proto file and generates a rust code for the gRPC services
     //we then import this rust code below
-    tonic::include_proto!("publish");
+    tonic::include_proto!("publishi");
 }
 use publish::publish_to_broker_server::{PublishToBroker, PublishToBrokerServer};
 use publish::{PublishDataToBroker, BrokerToPublisherAck};
