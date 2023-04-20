@@ -4,11 +4,12 @@ mod consume {
     tonic::include_proto!("consume");
 }
 use consume::consume_from_broker_client::ConsumeFromBrokerClient;
-use consume::ConsumeDataFromBroker;
+use consume::{ConsumeDataFromBroker, BrokerToConsumerAck};
 
 use prost_types::Timestamp;
 use std::time::{SystemTime, UNIX_EPOCH};
 use rand::Rng;
+use crate::consume::Pair;
 
 
 #[tokio::main]
@@ -41,10 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // sending data_to_broker and waiting for response
     let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
     println!("RESPONSE={:?}", ack_from_broker);
-    Ok(());
+    
 
     let data_to_consumer = tonic::Request::new(BrokerToConsumerAck {
-        pair: Some(Pair {
+        pair: vec!(Pair {
             event_name: String::from("default"),
             timestamp: Some(Timestamp {
                 seconds: chrono::Utc::now().timestamp(),
@@ -53,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
     });
 
-
+    Ok(())
 
 }
 
