@@ -3,17 +3,17 @@ name = "kafka_clone"
 version = "0.1.0"
 edition = "2021"
 
-#[[bin]]
-#name = "producer"
-#path = "src/producer/main.rs"
+[[bin]]
+name = "producer"
+path = "src/producer/main.rs"
 
 [[bin]]
 name = "consumer"
 path = "src/consumer/main.rs"
 
-#[[bin]]
-#name = "broker"
-#path = "src/broker/main.rs"
+[[bin]]
+name = "broker"
+path = "src/broker/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
