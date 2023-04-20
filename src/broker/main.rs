@@ -2,9 +2,12 @@ mod publish {
     //this compiles the publish.proto file and generates a rust code for the gRPC services
     //we then import this rust code below
     tonic::include_proto!("publish");
+    tonic::include_proto!("consume");
 }
 use publish::publish_to_broker_server::{PublishToBroker, PublishToBrokerServer};
 use publish::{PublishDataToBroker, BrokerToPublisherAck};
+use consume::consume_from_broker_serve::{ConsumeFromBroker, ConsumeFromBrokerServer};
+use consume::{ConsumeDataFromBroker, BrokerToConsumerAck};
 
 use tonic::{transport::Server, Request, Response, Status};
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -45,6 +48,23 @@ impl PublishToBroker for BrokerServer {
     }
 }
 
+// implementing rpc for request to the service defined in consume.proto
+#[tonic::async_trait]
+impl ConsumeFromBroker for BrokerServer {
+    // our rpc impelemented as function
+    async fn send(
+        &self,
+        data_received: Request<ConsumeDataToBroker>,
+    ) -> Result<Response<BrokerToConsumerAck>, Status> {
+        // returning a response as BrokerToConsumerAck message as defined in .proto
+        println!("Received message: {}", data_received.get_ref().event_name);
+        Ok(Response::new(BrokerToConsumerAck {
+            // reading data from request which is awrapper around our PublishDataToBroker message defined in .proto
+            response_to_consumer: format!("Broker response: received request with name {} and number {}", data_received.get_ref().event_name, data_received.get_ref().number.to_string()),
+        }))
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our service
@@ -55,6 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // adding our service to our server.
     Server::builder()
         .add_service(PublishToBrokerServer::new(server))
+        .add_service(ConsumeFromBrokerServer::new(server))
         .serve(addr)
         .await?;
     Ok(())
