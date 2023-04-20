@@ -3,13 +3,13 @@ name = "kafka_clone"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "producer"
-path = "src/producer/main.rs"
-
 #[[bin]]
-#name = "consumer"
-#path = "src/consumer/main.rs"
+#name = "producer"
+#path = "src/producer/main.rs"
+
+[[bin]]
+name = "consumer"
+path = "src/consumer/main.rs"
 
 #[[bin]]
 #name = "broker"
