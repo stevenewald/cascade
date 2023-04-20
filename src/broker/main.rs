@@ -10,6 +10,15 @@ use tonic::{transport::Server, Request, Response, Status};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use prost_types::Timestamp;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::fmt::Display;
+
+use std::sync::Mutex;
+use std::io::Write;
+use std::fs::OpenOptions;
+
 //this function is just to print and parse the timestamp of the event we receive
 fn timestamp_to_string(timestamp: Option<Timestamp>) -> String {
     if let Some(ts) = timestamp {
@@ -25,8 +34,26 @@ fn timestamp_to_string(timestamp: Option<Timestamp>) -> String {
 }
 
 // defining a struct for our publish to broker service (this side, the broker, is receiving and replying)
-#[derive(Default)]
-pub struct BrokerServer {}
+// #[derive(Default)]
+struct BrokerServer {
+    file: Mutex<std::fs::File>,
+}
+
+impl BrokerServer {
+    fn new() -> Self {
+        let file = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open("lorem_ipsum.txt")
+            .expect("Unable to open file");
+
+        println!("opened file!");
+
+        BrokerServer {
+            file: Mutex::new(file),
+        }
+    }
+}
 
 // implementing rpc for publish to the service defined in publish.proto
 #[tonic::async_trait]
@@ -38,6 +65,10 @@ impl PublishToBroker for BrokerServer {
     ) -> Result<Response<BrokerToPublisherAck>, Status> {
         // returning a response as BrokerToPublisherAck message as defined in .proto
         println!("Received message: {}", data_received.get_ref().event_name);
+
+        let mut file = self.file.lock().unwrap();
+        writeln!(file, "{}", data_received.get_ref().event_name).expect("Unable to write data to file");
+
         Ok(Response::new(BrokerToPublisherAck {
             // reading data from request which is awrapper around our PublishDataToBroker message defined in .proto
             response_to_producer: format!("Broker response: received event with name {} and timestamp {}", data_received.get_ref().event_name, timestamp_to_string(data_received.get_ref().timestamp.clone())),
@@ -48,9 +79,11 @@ impl PublishToBroker for BrokerServer {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our service
-    let addr = "[::1]:50051".parse().unwrap();
+    let addr = "[::1]:50052".parse().unwrap();
+    
     // creating a service
-    let server = BrokerServer::default();
+    let server = BrokerServer::new();
+
     println!("Server listening on {}", addr);
     // adding our service to our server.
     Server::builder()
