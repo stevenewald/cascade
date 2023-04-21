@@ -15,8 +15,6 @@ path = "src/consumer/main.rs"
 name = "broker"
 path = "src/broker/main.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 tonic = "0.9.1"
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
@@ -27,4 +25,4 @@ rand = "0.8.4"
 
 [build-dependencies]
 tonic-build = "0.9.1"
-protoc = "2.28.0"
+protoc = "2.28.0" 

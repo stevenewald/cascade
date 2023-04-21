@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     // sending data_to_broker and waiting for response
     let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
-    println!("RESPONSE={:?}", ack_from_broker);
+    println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
     Ok(())
 }
 
