@@ -34,12 +34,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data_to_broker = tonic::Request::new(PublishDataToBroker {
         event_name: String::from("default"),
         timestamp: Some(timestamp),
-        number: rng.gen::<i32>(), // set the number field to a random integer
-
+        number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
     });
     // sending data_to_broker and waiting for response
     let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
     println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
+
+    // make a for loop that runs for 10k iterations (sleep .01 seconds after sending each event, so ~100hz)
+    // send cpu usage (as a float assuming we can get good precision on cpu data) 100x per second
+    // make it asynchronous (can remove the .await? to make it asynchronous)
+    // look into whether there's a way (and if it's a good idea, maybe its not) to not have the broker send a response
+
+    //this is what it would look like in python
+    // for i in range(10000):
+        // data_to_broker = ...
+        // client_connection_to_broker.send(data_to_broker)
+        // sleep(0.01)
+
+    // if you remove the sleep functions, what happens (does it crash, if not, how many events/sec can it send)
+    // also worth experimenting with using the same timestamp
+    
+
     Ok(())
 }
 
