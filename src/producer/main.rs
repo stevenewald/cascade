@@ -14,7 +14,7 @@ use rand::Rng;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // creating a channel ie connection to server
-    let channel = tonic::transport::Channel::from_static("http://[::1]:50052")
+    let channel = tonic::transport::Channel::from_static("http://[::1]:50051")
         .connect()
         .await?;
     // creating gRPC client from channel

@@ -46,7 +46,7 @@ impl BrokerServer {
         let file = OpenOptions::new()
             .append(true)
             .create(true)
-            .open("lorem_ipsum.txt")
+            .open("events.log")
             .expect("Unable to open file");
 
         println!("opened file!");
