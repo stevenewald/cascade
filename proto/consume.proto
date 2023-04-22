@@ -14,11 +14,11 @@ message ConsumeDataFromBroker {
     uint32 number = 2;
 }
 
-message Pair {
+message Event {
     string event_name = 1;
     google.protobuf.Timestamp timestamp = 2;
 }
 message BrokerToConsumerAck {
     //string response_to_consumer = 1;
-    repeated Pair pair_vec = 1;
+    repeated Event event_vec = 1;
 }

@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // sending data_to_broker and waiting for response
     let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
-    println!("Received {} events from broker, first event_string is {}", ack_from_broker.pair_vec.len(), ack_from_broker.pair_vec[0].event_name);
+    println!("Received {} events from broker, first event_string is {}", ack_from_broker.event_vec.len(), ack_from_broker.event_vec[0].event_name);
 
     Ok(())
 

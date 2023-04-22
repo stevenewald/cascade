@@ -8,7 +8,7 @@ mod consume {
     tonic::include_proto!("consume");
 }
 use consume::consume_from_broker_server::{ConsumeFromBroker, ConsumeFromBrokerServer};
-use consume::{BrokerToConsumerAck, ConsumeDataFromBroker, Pair};
+use consume::{BrokerToConsumerAck, ConsumeDataFromBroker, Event};
 use publish::publish_to_broker_server::{PublishToBroker, PublishToBrokerServer};
 use publish::{BrokerToPublisherAck, PublishDataToBroker};
 
@@ -97,7 +97,7 @@ impl ConsumeFromBroker for BrokerServer {
             data_received.get_ref().event_name,
             data_received.get_ref().number.to_string()
         );
-        let response_pair = Pair {
+        let response_event = Event {
             event_name: String::from("event 1"),
             timestamp: Some(Timestamp {
                 seconds: chrono::Utc::now().timestamp(),
@@ -105,7 +105,7 @@ impl ConsumeFromBroker for BrokerServer {
             }),
         };
         Ok(Response::new(BrokerToConsumerAck {
-            pair_vec: vec![response_pair],
+            event_vec: vec![response_event],
         }))
     }
 }
