@@ -5,7 +5,6 @@ mod consume {
 }
 use consume::consume_from_broker_client::ConsumeFromBrokerClient;
 use consume::ConsumeDataFromBroker;
-use rand::Rng;
 
 
 #[tokio::main]
@@ -18,10 +17,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client_connection_to_broker = ConsumeFromBrokerClient::new(channel);
 
     // creating a new Request to send to broker
-    let mut rng = rand::thread_rng();
     let data_to_broker = tonic::Request::new(ConsumeDataFromBroker {
         event_name: String::from("req_from_consumer"),
-        number: rng.gen::<u8>() as u32,
+        number: 4,
         //this casting is purely for testing bc smaller numbers are nicer to look at
     });
 

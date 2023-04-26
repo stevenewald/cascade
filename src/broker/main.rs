@@ -83,7 +83,7 @@ impl PublishToBroker for BrokerServer {
         
         events_log_file.write(event_to_string.as_bytes()).expect("Failed to append event to events file\n");
         index_table_file.write(&(start_index.to_le_bytes())).expect("Failed to append index to index table file\n");
-
+        println!("Created new file in log with index {}", start_index.to_string());
         println!("Received message from producer: {}", data_received.get_ref().event_name);
         Ok(Response::new(BrokerToPublisherAck {
             // reading data from request which is awrapper around our PublishDataToBroker message defined in .proto
@@ -106,6 +106,23 @@ impl ConsumeFromBroker for BrokerServer {
         data_received: Request<ConsumeDataFromBroker>,
     ) -> Result<Response<BrokerToConsumerAck>, Status> {
         // returning a response as BrokerToConsumerAck message as defined in .proto
+        
+        let mut index_table_file = self.index_table.lock().unwrap();
+        //let events_log_file = self.events_log.lock().unwrap();
+        let event_num = &(data_received.get_ref().number as u64);
+
+        let mut index_buffer = [0;16];
+        index_table_file.seek(SeekFrom::Start(event_num*8))?;
+        index_table_file.read_exact(&mut index_buffer).expect("Couldn't read index table file\n");
+
+        let (first_bytes, second_bytes) = index_buffer.split_at_mut(8);
+        let curr_event_index = usize::from_le_bytes(first_bytes.try_into().unwrap());
+        let next_event_index = usize::from_le_bytes(second_bytes.try_into().unwrap());
+
+        println!("Requested event {} is at index {}", event_num, curr_event_index);
+        println!("Next event begins at index {}", next_event_index);
+
+
         println!(
             "Received message from consumer: {}\nWith key number: {}",
             data_received.get_ref().event_name,
