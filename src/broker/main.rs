@@ -17,7 +17,7 @@ use prost_types::Timestamp;
 use tonic::{transport::Server, Request, Response, Status};
 
 use std::sync::Mutex;
-use std::io::Write;
+use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::OpenOptions;
 
 //this function is just to print and parse the timestamp of the event we receive
@@ -38,21 +38,32 @@ fn timestamp_to_string(timestamp: Option<Timestamp>) -> String {
 // defining a struct for our publish to broker service (this side, the broker, is receiving and replying)
 // #[derive(Default)]
 struct BrokerServer {
-    file: Mutex<std::fs::File>,
+    // eventually, will be multiple files, but just one for now
+    // this file stores the actual events
+    events_log: Mutex<std::fs::File>,
+    index_table: Mutex<std::fs::File>,
 }
 
 impl BrokerServer {
     fn new() -> Self {
-        let file = OpenOptions::new()
+        let events_log = OpenOptions::new()
             .append(true)
             .create(true)
+            .read(true)
             .open("events.log")
-            .expect("Unable to open file");
-
+            .expect("Unable to open events log");
+        
+        let index_table = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .read(true)
+            .open("index.table")
+            .expect("Unable to open index table");
         println!("opened file!");
 
         BrokerServer {
-            file: Mutex::new(file),
+            events_log: Mutex::new(events_log),
+            index_table: Mutex::new(index_table),
         }
     }
 }
@@ -65,10 +76,13 @@ impl PublishToBroker for BrokerServer {
         &self,
         data_received: Request<PublishDataToBroker>,
     ) -> Result<Response<BrokerToPublisherAck>, Status> {
-        // returning a response as BrokerToPublisherAck message as defined in .proto
-
-        let mut file = self.file.lock().unwrap();
-        writeln!(file, "{}", data_received.get_ref().event_name).expect("Unable to write data to file");
+        let mut index_table_file = self.index_table.lock().unwrap();
+        let mut events_log_file = self.events_log.lock().unwrap(); //todo: could cause deadlocks?
+        let event_to_string = &data_received.get_ref().event_name; //todo: make this more complex
+        let start_index = events_log_file.seek(SeekFrom::Current(0))?;
+        
+        events_log_file.write(event_to_string.as_bytes()).expect("Failed to append event to events file\n");
+        index_table_file.write(&(start_index.to_le_bytes())).expect("Failed to append index to index table file\n");
 
         println!("Received message from producer: {}", data_received.get_ref().event_name);
         Ok(Response::new(BrokerToPublisherAck {
