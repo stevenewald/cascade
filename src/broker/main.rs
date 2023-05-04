@@ -133,6 +133,7 @@ impl ConsumeFromBroker for BrokerServer {
             curr_event_index = usize::from_le_bytes(half_index_buffer.try_into().unwrap());
             next_event_index = file_size as usize;
         } else {
+            println!("Requesting not-last event");
             index_table_file.read_exact(&mut index_buffer).expect("Couldn't read index table file\n");
             let (first_bytes, second_bytes) = index_buffer.split_at_mut(8);
 
@@ -154,12 +155,13 @@ impl ConsumeFromBroker for BrokerServer {
         println!("Message content is {}", event_string);
 
         println!(
-            "Received message from consumer: {}\nWith key number: {}",
+            "Received message from consumer: {}\nWith key number: {}\nWith content: {}",
             data_received.get_ref().event_name,
-            data_received.get_ref().number.to_string()
+            data_received.get_ref().number.to_string(),
+            event_string
         );
         let response_event = Event {
-            event_name: String::from("event 1"),
+            event_name: String::from(event_string),
             timestamp: Some(Timestamp {
                 seconds: chrono::Utc::now().timestamp(),
                 nanos: 0,
