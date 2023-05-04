@@ -19,6 +19,7 @@ use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Mutex;
 use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::OpenOptions;
+use std::fs;
 
 //this function is just to print and parse the timestamp of the event we receive
 fn timestamp_to_string(timestamp: Option<Timestamp>) -> String {
@@ -108,20 +109,49 @@ impl ConsumeFromBroker for BrokerServer {
         // returning a response as BrokerToConsumerAck message as defined in .proto
         
         let mut index_table_file = self.index_table.lock().unwrap();
-        //let events_log_file = self.events_log.lock().unwrap();
+        let mut events_log_file = self.events_log.lock().unwrap();
         let event_num = &(data_received.get_ref().number as u64);
+        let index_length = index_table_file.seek(SeekFrom::End(0))? / 1; // length in bytes
+
+        let metadata = fs::metadata("events.log")?;
+        let file_size = metadata.len();
+
+        println!("{} {}", file_size, index_length);
 
         let mut index_buffer = [0;16];
         index_table_file.seek(SeekFrom::Start(event_num*8))?;
-        index_table_file.read_exact(&mut index_buffer).expect("Couldn't read index table file\n");
 
-        let (first_bytes, second_bytes) = index_buffer.split_at_mut(8);
-        let curr_event_index = usize::from_le_bytes(first_bytes.try_into().unwrap());
-        let next_event_index = usize::from_le_bytes(second_bytes.try_into().unwrap());
+        let curr_event_index;
+        let next_event_index;
+        if *event_num == (index_length / 8) - 1 {
+            println!("Requesting last event");
 
-        println!("Requested event {} is at index {}", event_num, curr_event_index);
-        println!("Next event begins at index {}", next_event_index);
+            // set cur and next index
+            let mut half_index_buffer = [0;8];
+            index_table_file.read_exact(&mut half_index_buffer).expect("Couldn't read index table file\n");
 
+            curr_event_index = usize::from_le_bytes(half_index_buffer.try_into().unwrap());
+            next_event_index = file_size as usize;
+        } else {
+            index_table_file.read_exact(&mut index_buffer).expect("Couldn't read index table file\n");
+            let (first_bytes, second_bytes) = index_buffer.split_at_mut(8);
+
+            println!("{:?} {:?}", first_bytes, second_bytes);
+
+            curr_event_index = usize::from_le_bytes(first_bytes.try_into().unwrap());
+            next_event_index = usize::from_le_bytes(second_bytes.try_into().unwrap());
+        }
+
+        println!("{} {}", curr_event_index, next_event_index);
+
+        let length_of_event = next_event_index - curr_event_index;
+        let mut event_buffer = vec![0; length_of_event];
+
+        events_log_file.seek(SeekFrom::Start(curr_event_index as u64))?;
+        events_log_file.read_exact(&mut event_buffer).expect("Could not read event\n");
+
+        let event_string = String::from_utf8(event_buffer).unwrap_or_else(|_| String::new());
+        println!("Message content is {}", event_string);
 
         println!(
             "Received message from consumer: {}\nWith key number: {}",
