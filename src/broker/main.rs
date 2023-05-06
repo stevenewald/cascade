@@ -118,7 +118,6 @@ impl ConsumeFromBroker for BrokerServer {
 
         println!("{} {}", file_size, index_length);
 
-        let mut index_buffer = [0;16];
         index_table_file.seek(SeekFrom::Start(event_num*8))?;
 
         let curr_event_index;
@@ -134,6 +133,8 @@ impl ConsumeFromBroker for BrokerServer {
             next_event_index = file_size as usize;
         } else {
             println!("Requesting not-last event");
+            
+            let mut index_buffer = [0;16];
             index_table_file.read_exact(&mut index_buffer).expect("Couldn't read index table file\n");
             let (first_bytes, second_bytes) = index_buffer.split_at_mut(8);
 
