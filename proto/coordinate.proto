@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package coordinate;
+
+// The Broker message represents metadata for a single broker instance.
+message Broker {
+  uint32 id = 1;
+  string ip = 2;
+  uint32 port = 3;
+}
+
+// The Partition message represents metadata for a single partition.
+message Partition {
+  uint32 id = 1;
+}
+
+// The MetadataRequest message represents a request for metadata.
+message MetadataRequest {
+  repeated string topic_names = 1;
+}
+
+// The MetadataResponse message represents a response containing metadata.
+message MetadataResponse {
+  repeated Broker brokers = 1;
+}
+
+// The KafkaMetadataService provides a service for requesting and receiving metadata about brokers and partitions.
+service KafkaMetadataService {
+  rpc GetMetadata(MetadataRequest) returns (MetadataResponse);
+}
+
+// The BrokerInitializationRequest message represents a request for a broker to initialize itself with the group coordinator.
+message BrokerInitializationRequest {
+  Broker broker = 1;
+  uint32 partition = 2;
+}
+
+// The BrokerInitializationResponse message represents the status of the broker initialization.
+message BrokerInitializationResponse {
+  enum StatusCode {
+    OK = 0;
+    ERROR = 1;
+  }
+  StatusCode status = 1;
+  string message = 2;
+}
+
+// The KafkaBrokerInitializationService provides a service for brokers to initialize themselves with the group coordinator.
+service KafkaBrokerInitializationService {
+  rpc InitializeBroker(BrokerInitializationRequest) returns (BrokerInitializationResponse);
+}
