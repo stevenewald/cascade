@@ -1,3 +1,11 @@
+mod coordinate {
+    //this compiles the coordinator.proto file and generates a rust code for the gRPC services
+    //we then import this rust code below
+    tonic::include_proto!("coordinate");
+}
+
+use coordinate::{kafka_metadata_service_client::KafkaMetadataServiceClient, MetadataRequest};
+
 mod publish {
     //this compiles the publish.proto file and generates a rust code for the gRPC services
     //we then import this rust code below
@@ -57,5 +65,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
 
