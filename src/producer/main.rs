@@ -30,11 +30,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // creating gRPC client for KafkaMetadataService from channel
     let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
     // creating a channel ie connection to server
-    let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
-        .connect()
-        .await?;
-    // creating gRPC client from channel
-    let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
+    // let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
+    //     .connect()
+    //     .await?;
+    // // creating gRPC client from channel
+    // let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
@@ -45,6 +45,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let num_partitions = metadata_response.brokers.len();
     println!("Received metadata from coordinator with {} partitions.", num_partitions);
 
+    // events_to_send (made up) = [a, b, c, d]
+    // brokers = [1, 2, 3, 4]
+    // counter = 0
+    // while counter < len(events_to_send):
+        // brokers[counter % len(brokers)].send(events_to_send[counter])
+        // counter+=1
+
+
+
+
+    //starting here, everything will be in a for loop (loop through brokers in response)
     // getting the current time as a Duration since UNIX_EPOCH
     let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
 
