@@ -22,11 +22,17 @@ use rand::Rng;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // creating a channel ie connection to server
-    let channel = tonic::transport::Channel::from_static("http://[::1]:50051")
+    let coordinator_channel = tonic::transport::Channel::from_static("http://[::1]:50001")
+        .connect()
+        .await?;
+    // creating gRPC client for KafkaMetadataService from channel
+    let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
+    // creating a channel ie connection to server
+    let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
         .connect()
         .await?;
     // creating gRPC client from channel
-    let mut client_connection_to_broker = PublishToBrokerClient::new(channel);
+    let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
 
     // getting the current time as a Duration since UNIX_EPOCH
     let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
