@@ -21,7 +21,6 @@ use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::OpenOptions;
 use std::fs;
 
-use std::net::TcpListener;
 use dotenv;
 
 //this function is just to print and parse the timestamp of the event we receive
@@ -200,12 +199,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     .connect()
     //     .await?;
     // // creating gRPC client from channel
-    // let mut connection_to_gc = SOMETHING IDK WHAT::new(group_coordinator);
+    // let mut connection_to_gc = KafkaBrokerInitializationServiceClient::new(group_coordinator);
 
     // // creating a new Request to send to broker
     // let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
     //     broker: /*I have NO IDEA what goes here*/,
-    //     partition: /*random number*/,
+    //     partition: 2,
     // });
 
     // let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
