@@ -21,6 +21,8 @@ use rand::Rng;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    // the port 50001 result in connection error
     // creating a channel ie connection to server
     let coordinator_channel = tonic::transport::Channel::from_static("http://[::1]:50001")
         .connect()
@@ -33,6 +35,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     // creating gRPC client from channel
     let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
+
+    // creating a new Request to send to KafkaMetadataService
+    let metadata_request = tonic::Request::new(MetadataRequest {
+        topic_names: vec![String::from("default")],
+    });
+    // sending metadata_request and waiting for response
+    let metadata_response = kafka_metadata_service_client.get_metadata(metadata_request).await?.into_inner();
+    let num_partitions = metadata_response.brokers.len();
+    println!("Received metadata from coordinator with {} partitions.", num_partitions);
 
     // getting the current time as a Duration since UNIX_EPOCH
     let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
