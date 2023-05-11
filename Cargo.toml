@@ -22,6 +22,7 @@ prost = "0.11.8"
 prost-types = "0.11.8"
 chrono = "0.4.24"
 rand = "0.8.4"
+dotenv = "0.15.0"
 
 [build-dependencies]
 tonic-build = "0.9.1"

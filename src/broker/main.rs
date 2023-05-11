@@ -21,6 +21,9 @@ use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::OpenOptions;
 use std::fs;
 
+use std::net::TcpListener;
+use dotenv;
+
 //this function is just to print and parse the timestamp of the event we receive
 fn timestamp_to_string(timestamp: Option<Timestamp>) -> String {
     if let Some(ts) = timestamp {
@@ -177,12 +180,36 @@ impl ConsumeFromBroker for BrokerServer {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our server
-    let addr = "[::1]:50051".parse().unwrap();
+    let ip_port_string = format!("[::1]:50051");
+    let addr = ip_port_string.parse().unwrap();
+
+    // get env variables
+    dotenv::dotenv().ok();
+    let coord_ip = dotenv::var("COORD_IP").unwrap();
+    let coord_port = dotenv::var("COORD_PORT").unwrap();
+    let coord_address = format!("{}:{}", coord_ip, coord_port);
+    println!("Coordinator is at {}", coord_address);
 
     // we have to define a service for each of our rpcs
-    //andrew, these will soon be the bane of your existence (concurrency)
+    // andrew, these will soon be the bane of your existence (concurrency)
     let service1 = BrokerServer::new();
     let service2 = BrokerServer::new();
+
+    // // creating a channel ie connection to server
+    // let group_coordinator = tonic::transport::Channel::from_static("http://{}", coord_address)
+    //     .connect()
+    //     .await?;
+    // // creating gRPC client from channel
+    // let mut connection_to_gc = SOMETHING IDK WHAT::new(group_coordinator);
+
+    // // creating a new Request to send to broker
+    // let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
+    //     broker: /*I have NO IDEA what goes here*/,
+    //     partition: /*random number*/,
+    // });
+
+    // let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
+
     println!("Server listening on port {}", addr);
     // adding services to server and serving
     Server::builder()
