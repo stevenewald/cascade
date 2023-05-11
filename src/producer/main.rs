@@ -55,26 +55,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
 
-    //starting here, everything will be in a for loop (loop through brokers in response)
-    // getting the current time as a Duration since UNIX_EPOCH
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+    //1. from received metadata, copy(clone()) the partitions
+    //2. for each broker/partition (effectively same), establish a connection and put it in a vector
+    //3. use the above pseudocode to loop through as the pseudocode implies
 
-    // converting Duration to Timestamp
-    let timestamp = Timestamp {
-        seconds: now.as_secs() as i64,
-        nanos: now.subsec_nanos() as i32,
-    };
+    let mut partition_index = 0;
 
-    // creating a new Request to send to broker
-    let mut rng = rand::thread_rng();
-    let data_to_broker = tonic::Request::new(PublishDataToBroker {
-        event_name: String::from("default"),
-        timestamp: Some(timestamp),
-        number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
-    });
-    // sending data_to_broker and waiting for response
-    let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
-    println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
+
+    // let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+
+    // // converting Duration to Timestamp
+    // let timestamp = Timestamp {
+    //     seconds: now.as_secs() as i64,
+    //     nanos: now.subsec_nanos() as i32,
+    // };
+
+    // // creating a new Request to send to broker
+    // let mut rng = rand::thread_rng();
+    // let data_to_broker = tonic::Request::new(PublishDataToBroker {
+    //     event_name: String::from("default"),
+    //     timestamp: Some(timestamp),
+    //     number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
+    // });
+    // // sending data_to_broker and waiting for response
+    // let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
+    // println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
 
     // make a for loop that runs for 10k iterations (sleep .01 seconds after sending each event, so ~100hz)
     // send cpu usage (as a float assuming we can get good precision on cpu data) 100x per second
