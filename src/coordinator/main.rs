@@ -66,10 +66,11 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
             if !topic_brokers.contains(&broker) {
                 topic_brokers.insert(broker);
             } else {
-                Ok(Response::new(BrokerInitializationResponse {
+                let resp = Response::new(BrokerInitializationResponse {
                     status: 1,
                     message: "Broker already registered".to_string(),
-                }));
+                });
+                Ok::<tonic::Response<BrokerInitializationResponse>,u8>(resp);
             }
         } else {
             metadata_map.insert(topic_name.to_string(), Mutex::new(HashSet::new()));
