@@ -7,10 +7,18 @@ mod publish {
 mod consume {
     tonic::include_proto!("consume");
 }
+
+mod coordinate {
+    tonic::include_proto!("coordinate");
+}
+
 use consume::consume_from_broker_server::{ConsumeFromBroker, ConsumeFromBrokerServer};
 use consume::{BrokerToConsumerAck, ConsumeDataFromBroker, Event};
 use publish::publish_to_broker_server::{PublishToBroker, PublishToBrokerServer};
 use publish::{BrokerToPublisherAck, PublishDataToBroker};
+// use coordinate::kafka_broker_initialization_service_server::KafkaBrokerInitializationServiceServer;
+use coordinate::{BrokerInitializationRequest};
+use crate::coordinate::kafka_broker_initialization_service_client::KafkaBrokerInitializationServiceClient;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use prost_types::Timestamp;
@@ -194,20 +202,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service1 = BrokerServer::new();
     let service2 = BrokerServer::new();
 
-    // // creating a channel ie connection to server
-    // let group_coordinator = tonic::transport::Channel::from_static("http://{}", coord_address)
-    //     .connect()
-    //     .await?;
-    // // creating gRPC client from channel
-    // let mut connection_to_gc = KafkaBrokerInitializationServiceClient::new(group_coordinator);
+    // connect to coordinator, same as how consumer connects to broker
+    let group_coordinator = tonic::transport::Channel::from_static("http://{coord_address}")
+        .connect()
+        .await?;
+    let mut connection_to_gc = KafkaBrokerInitializationServiceClient::new(group_coordinator);
 
-    // // creating a new Request to send to broker
-    // let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
-    //     broker: /*I have NO IDEA what goes here*/,
-    //     partition: 2,
-    // });
+    // create an arbitrary broker/partition with arbitrary id, partition id, etc
+    let broker = coordinate::Broker {
+        id: 1,
+        ip: "127:0:0:1".to_string(),
+        port : 12000
+    };
 
-    // let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
+    // send over brokerinitializationrequest
+    // wait for brokerinitializationresponse
+    let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
+        broker: Some(broker),
+        partition: 1,
+    });
+
+    let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
+
+    // Have to do something with the response_from_gc variable
 
     println!("Server listening on port {}", addr);
     // adding services to server and serving

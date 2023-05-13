@@ -47,5 +47,5 @@ message BrokerInitializationResponse {
 
 // The KafkaBrokerInitializationService provides a service for brokers to initialize themselves with the group coordinator.
 service KafkaBrokerInitializationService {
-  rpc InitializeBroker(BrokerInitializationRequest) returns (BrokerInitializationResponse);
+  rpc Send (BrokerInitializationRequest) returns (BrokerInitializationResponse);
 }
