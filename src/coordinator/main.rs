@@ -4,19 +4,14 @@ mod coordinate {
     tonic::include_proto!("coordinate");
 }
 
-use coordinate::broker_initialization_response::StatusCode;
 use coordinate::kafka_metadata_service_server::{KafkaMetadataService, KafkaMetadataServiceServer};
 use coordinate::kafka_broker_initialization_service_server::{KafkaBrokerInitializationService, KafkaBrokerInitializationServiceServer};
 
 use coordinate::{Broker, MetadataRequest, MetadataResponse, BrokerInitializationRequest, BrokerInitializationResponse};
 
-use chrono::{DateTime, NaiveDateTime, Utc};
-use prost_types::Timestamp;
 use tonic::{transport::Server, Request, Response, Status};
 
 use std::sync::Mutex;
-use std::io::{Read, Write, Seek, SeekFrom};
-use std::fs::OpenOptions;
 use std::collections::{HashMap, HashSet};
 
 impl std::hash::Hash for Broker {
@@ -26,12 +21,6 @@ impl std::hash::Hash for Broker {
 }
 
 impl std::cmp::Eq for Broker {}
-
-// impl std::cmp::PartialEq for Broker {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.id == other.id && self.ip == other.ip && self.port == other.port;
-//     }
-// }
 
 struct CoordinatorServer {
     // Map between topic and a set of brokers who hold the topic
@@ -56,6 +45,8 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
         data_received: Request<BrokerInitializationRequest>,
     ) -> Result<Response<BrokerInitializationResponse>, Status> {
         let broker: Broker = data_received.get_ref().broker.clone().unwrap();
+        // TODO: partition is part of initialization request, but is not part of 
+        // metdata request. we should probably be mapping (broker, parition) -> topic_name
         let partition: u32 = data_received.get_ref().partition;
         let topic_name: &String = &data_received.get_ref().topic_name;
 
@@ -93,14 +84,12 @@ impl KafkaMetadataService for CoordinatorServer {
         data_received: Request<MetadataRequest>,
     ) -> Result<Response<MetadataResponse>, Status> {
         let topic_name: &String = &data_received.get_ref().topic_name;
-        let mut metadata_map = self.broker_metadata.lock().unwrap();
-        let brokers: Vec<Broker> = Vec::new();
+        let metadata_map = self.broker_metadata.lock().unwrap();
+        let mut brokers: Vec<Broker> = Vec::new();
 
         if metadata_map.contains_key(topic_name) {
-            let mut topic_brokers = metadata_map.get(topic_name).unwrap().lock().unwrap();
-            for broker in topic_brokers.iter() {
-                brokers.push(broker.clone());
-            }
+            let topic_brokers = metadata_map.get(topic_name).unwrap().lock().unwrap();
+            brokers = topic_brokers.iter().cloned().collect();
         }
         
         drop(metadata_map);
@@ -111,7 +100,21 @@ impl KafkaMetadataService for CoordinatorServer {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // defining address for our server
+    let addr = "[::1]:50051".parse().unwrap();
 
+    // we have to define a service for each of our rpcs
+    //andrew, these will soon be the bane of your existence (concurrency)
+    let service1: CoordinatorServer = CoordinatorServer::new();
+    let service2 = CoordinatorServer::new();
+    println!("Server listening on port {}", addr);
+    // adding services to server and serving
+    Server::builder()
+        .add_service(KafkaBrokerInitializationServiceServer::new(service1))
+        .add_service(KafkaMetadataServiceServer::new(service2))
+        .serve(addr)
+        .await?;
+    Ok(())
 }
-
