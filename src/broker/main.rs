@@ -220,6 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
         broker: Some(broker),
         partition: 1,
+        topic_name: "A name".to_string()
     });
 
     let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
