@@ -70,6 +70,8 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
 
         drop(metadata_map);
 
+        println!("Broker initialized");
+
         Ok(Response::new(BrokerInitializationResponse {
             status: 0,
             message: "Broker successfully registered".to_string()
@@ -109,7 +111,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //andrew, these will soon be the bane of your existence (concurrency)
     let service1: CoordinatorServer = CoordinatorServer::new();
     let service2 = CoordinatorServer::new();
-    println!("Server listening on port {}", addr);
+    println!("Coordinator listening on port {}", addr);
     // adding services to server and serving
     Server::builder()
         .add_service(KafkaBrokerInitializationServiceServer::new(service1))

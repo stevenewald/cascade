@@ -187,14 +187,15 @@ impl ConsumeFromBroker for BrokerServer {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our server
-    let ip_port_string = format!("[::1]:50051");
+    let ip_port_string = format!("[::1]:50050");
     let addr = ip_port_string.parse().unwrap();
 
     // get env variables
     dotenv::dotenv().ok();
     let coord_ip = dotenv::var("COORD_IP").unwrap();
     let coord_port = dotenv::var("COORD_PORT").unwrap();
-    let coord_address = format!("{}:{}", coord_ip, coord_port);
+    let coord_address = format!("http://{}:{}", coord_ip, coord_port);
+    let coord_address = Box::leak(coord_address.into_boxed_str());
     println!("Coordinator is at {}", coord_address);
 
     // we have to define a service for each of our rpcs
@@ -203,9 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service2 = BrokerServer::new();
 
     // connect to coordinator, same as how consumer connects to broker
-    let group_coordinator = tonic::transport::Channel::from_static("http://{coord_address}")
-        .connect()
-        .await?;
+    let group_coordinator = tonic::transport::Channel::from_static(coord_address).connect().await?;
     let mut connection_to_gc = KafkaBrokerInitializationServiceClient::new(group_coordinator);
 
     // create an arbitrary broker/partition with arbitrary id, partition id, etc
@@ -225,9 +224,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
 
+    println!("Response from coordinator with status code {} and message {}", response_from_gc.status, response_from_gc.message);
+
     // Have to do something with the response_from_gc variable
 
-    println!("Server listening on port {}", addr);
+    println!("Broker listening on port {}", addr);
     // adding services to server and serving
     Server::builder()
         .add_service(PublishToBrokerServer::new(service1))
