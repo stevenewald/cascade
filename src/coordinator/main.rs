@@ -40,7 +40,7 @@ impl CoordinatorServer {
 
 #[tonic::async_trait]
 impl KafkaBrokerInitializationService for CoordinatorServer {
-    async fn initialize_broker(
+    async fn send(
         &self,
         data_received: Request<BrokerInitializationRequest>,
     ) -> Result<Response<BrokerInitializationResponse>, Status> {
