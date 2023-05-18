@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
-        topic_names: vec![String::from("default")],
+        topic_name: "default".to_string(),
     });
     // sending metadata_request and waiting for response
     let metadata_response = kafka_metadata_service_client.get_metadata(metadata_request).await?.into_inner();
