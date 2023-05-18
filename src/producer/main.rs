@@ -30,11 +30,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // creating gRPC client for KafkaMetadataService from channel
     let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
     // creating a channel ie connection to server
-    // let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
-    //     .connect()
-    //     .await?;
-    // // creating gRPC client from channel
-    // let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
+    let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
+        .connect()
+        .await?;
+    // creating gRPC client from channel
+    let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
@@ -61,26 +61,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut partition_index = 0;
 
+    for i in 0..10000 {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+        // converting Duration to Timestamp
+        let timestamp = Timestamp {
+            seconds: now.as_secs() as i64,
+            nanos: now.subsec_nanos() as i32,
+        };
 
-    // let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+        // creating a new Request to send to broker
+        let mut rng = rand::thread_rng();
+        let data_to_broker = tonic::Request::new(PublishDataToBroker {
+            event_name: String::from("default"),
+            timestamp: Some(timestamp),
+            number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
+        });
 
-    // // converting Duration to Timestamp
-    // let timestamp = Timestamp {
-    //     seconds: now.as_secs() as i64,
-    //     nanos: now.subsec_nanos() as i32,
-    // };
+        // sending data_to_broker and waiting for response
+        let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
+        println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
 
-    // // creating a new Request to send to broker
-    // let mut rng = rand::thread_rng();
-    // let data_to_broker = tonic::Request::new(PublishDataToBroker {
-    //     event_name: String::from("default"),
-    //     timestamp: Some(timestamp),
-    //     number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
-    // });
-    // // sending data_to_broker and waiting for response
-    // let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
-    // println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    }
+    
 
+    
+    
     // make a for loop that runs for 10k iterations (sleep .01 seconds after sending each event, so ~100hz)
     // send cpu usage (as a float assuming we can get good precision on cpu data) 100x per second
     // make it asynchronous (can remove the .await? to make it asynchronous)
