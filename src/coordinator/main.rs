@@ -30,7 +30,6 @@ struct CoordinatorServer {
 impl CoordinatorServer {
     fn new() -> Self {
         let broker_metadata: HashMap<String, Mutex<HashSet<Broker>>> = HashMap::new();
-        println!("opened file!");
 
         CoordinatorServer {
             broker_metadata: Mutex::new(broker_metadata)
