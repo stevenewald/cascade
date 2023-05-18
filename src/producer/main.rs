@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // the port 50001 result in connection error
     // creating a channel ie connection to server
-    let coordinator_channel = tonic::transport::Channel::from_static("http://[::1]:50001")
+    let coordinator_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
         .connect()
         .await?;
     
@@ -55,7 +55,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut clients = Vec::new();
     for broker in &metadata_response.brokers {
         //let address = format!("{}:{}", broker.host, broker.port);
-        let broker_channel = tonic::transport::Channel::from_shared("http://[::1]:5000")?
+        let broker_channel = tonic::transport::Channel::from_shared("http://[::1]:50050")? //steve todo:
+            //should use the ip from the broker
             .connect()
             .await?;
         let client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
