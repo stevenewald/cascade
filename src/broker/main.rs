@@ -7,10 +7,18 @@ mod publish {
 mod consume {
     tonic::include_proto!("consume");
 }
+
+mod coordinate {
+    tonic::include_proto!("coordinate");
+}
+
 use consume::consume_from_broker_server::{ConsumeFromBroker, ConsumeFromBrokerServer};
 use consume::{BrokerToConsumerAck, ConsumeDataFromBroker, Event};
 use publish::publish_to_broker_server::{PublishToBroker, PublishToBrokerServer};
 use publish::{BrokerToPublisherAck, PublishDataToBroker};
+// use coordinate::kafka_broker_initialization_service_server::KafkaBrokerInitializationServiceServer;
+use coordinate::{BrokerInitializationRequest};
+use crate::coordinate::kafka_broker_initialization_service_client::KafkaBrokerInitializationServiceClient;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use prost_types::Timestamp;
@@ -20,6 +28,8 @@ use std::sync::Mutex;
 use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::OpenOptions;
 use std::fs;
+
+use dotenv;
 
 //this function is just to print and parse the timestamp of the event we receive
 fn timestamp_to_string(timestamp: Option<Timestamp>) -> String {
@@ -177,13 +187,48 @@ impl ConsumeFromBroker for BrokerServer {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our server
-    let addr = "[::1]:50051".parse().unwrap();
+    let ip_port_string = format!("[::1]:50050");
+    let addr = ip_port_string.parse().unwrap();
+
+    // get env variables
+    dotenv::dotenv().ok();
+    let coord_ip = dotenv::var("COORD_IP").unwrap();
+    let coord_port = dotenv::var("COORD_PORT").unwrap();
+    let coord_address = format!("http://{}:{}", coord_ip, coord_port);
+    let coord_address = Box::leak(coord_address.into_boxed_str());
+    println!("Coordinator is at {}", coord_address);
 
     // we have to define a service for each of our rpcs
-    //andrew, these will soon be the bane of your existence (concurrency)
+    // andrew, these will soon be the bane of your existence (concurrency)
     let service1 = BrokerServer::new();
     let service2 = BrokerServer::new();
-    println!("Server listening on port {}", addr);
+
+    // connect to coordinator, same as how consumer connects to broker
+    let group_coordinator = tonic::transport::Channel::from_static(coord_address).connect().await?;
+    let mut connection_to_gc = KafkaBrokerInitializationServiceClient::new(group_coordinator);
+
+    // create an arbitrary broker/partition with arbitrary id, partition id, etc
+    let broker = coordinate::Broker {
+        id: 1,
+        ip: "127:0:0:1".to_string(),
+        port : 12000
+    };
+
+    // send over brokerinitializationrequest
+    // wait for brokerinitializationresponse
+    let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
+        broker: Some(broker),
+        partition: 1,
+        topic_name: "test".to_string()
+    });
+
+    let response_from_gc = connection_to_gc.send(data_for_gc).await?.into_inner();
+
+    println!("Response from coordinator with status code {} and message {}", response_from_gc.status, response_from_gc.message);
+
+    // Have to do something with the response_from_gc variable
+
+    println!("Broker listening on port {}", addr);
     // adding services to server and serving
     Server::builder()
         .add_service(PublishToBrokerServer::new(service1))

@@ -16,7 +16,7 @@ message Partition {
 
 // The MetadataRequest message represents a request for metadata.
 message MetadataRequest {
-  repeated string topic_names = 1;
+  string topic_name = 1;
 }
 
 // The MetadataResponse message represents a response containing metadata.
@@ -33,6 +33,7 @@ service KafkaMetadataService {
 message BrokerInitializationRequest {
   Broker broker = 1;
   uint32 partition = 2;
+  string topic_name = 3; 
 }
 
 // The BrokerInitializationResponse message represents the status of the broker initialization.
@@ -47,5 +48,5 @@ message BrokerInitializationResponse {
 
 // The KafkaBrokerInitializationService provides a service for brokers to initialize themselves with the group coordinator.
 service KafkaBrokerInitializationService {
-  rpc InitializeBroker(BrokerInitializationRequest) returns (BrokerInitializationResponse);
+  rpc Send (BrokerInitializationRequest) returns (BrokerInitializationResponse);
 }
