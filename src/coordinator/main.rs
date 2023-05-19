@@ -104,7 +104,7 @@ impl KafkaMetadataService for CoordinatorServer {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our server
-    let addr = "[::1]:50051".parse().unwrap();
+    let addr = "0.0.0.0:50051".parse().unwrap();
 
     // we have to define a service for each of our rpcs
     //andrew, these will soon be the bane of your existence (concurrency)

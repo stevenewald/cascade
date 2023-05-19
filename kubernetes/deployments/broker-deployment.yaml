@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broker
+spec:
+  selector:
+    matchLabels:
+      app: broker
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: broker
+    spec:
+      containers:
+      - name: broker
+        image: stevenewald/cascade_broker 
+        ports:
+        - containerPort: 50050 
+
