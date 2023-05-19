@@ -11,6 +11,8 @@ use coordinate::{Broker, MetadataRequest, MetadataResponse, BrokerInitialization
 
 use tonic::{transport::Server, Request, Response, Status};
 
+mod broker_dict;
+
 use std::sync::Mutex;
 use std::collections::{HashMap, HashSet};
 
@@ -108,7 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // we have to define a service for each of our rpcs
     //andrew, these will soon be the bane of your existence (concurrency)
-    let service1: CoordinatorServer = CoordinatorServer::new();
+    let service1 = CoordinatorServer::new();
     let service2 = CoordinatorServer::new();
     println!("Coordinator listening on port {}", addr);
     // adding services to server and serving
