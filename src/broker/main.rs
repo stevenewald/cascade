@@ -28,6 +28,7 @@ use std::sync::Mutex;
 use std::io::{Read, Write, Seek, SeekFrom};
 use std::fs::OpenOptions;
 use std::fs;
+use get_if_addrs::get_if_addrs;
 
 // use dotenv;
 
@@ -183,11 +184,26 @@ impl ConsumeFromBroker for BrokerServer {
         }))
     }
 }
+fn get_broker() -> Result<coordinate::Broker, Box<dyn std::error::Error>> {
+    let addrs = get_if_addrs().expect("Unable to get network interfaces");
+    for iface in addrs {
+        if !iface.is_loopback() && iface.addr.ip().is_ipv4() {
+            println!("Current IP address: {}", iface.addr.ip());
+            return Ok(coordinate::Broker {
+                id: 1, //todo: request from coord
+                ip: iface.addr.ip().to_string(),
+                port: 50030
+            })
+        }
+    }
+    Err("Couldn't find IP".into())
+}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our server
-    let ip_port_string = format!("127.0.0.1:50050");
+    let ip_port_string = format!("0.0.0.0:50030");
     let addr = ip_port_string.parse().unwrap();
 
     // get env variables
@@ -204,17 +220,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let group_coordinator = tonic::transport::Channel::from_static(coord_address).connect().await?;
     let mut connection_to_gc = KafkaBrokerInitializationServiceClient::new(group_coordinator);
 
+
+    
     // create an arbitrary broker/partition with arbitrary id, partition id, etc
-    let broker = coordinate::Broker {
-        id: 1,
-        ip: "127:0:0:1".to_string(),
-        port : 12000
-    };
+    // let broker = coordinate::Broker {
+        // id: 1,
+        // ip: "127:0:0:1".to_string(),
+        // port : 12000
+    // };
+    let broker = get_broker();
 
     // send over brokerinitializationrequest
     // wait for brokerinitializationresponse
     let data_for_gc = tonic::Request::new(BrokerInitializationRequest {
-        broker: Some(broker),
+        broker: Some(broker.unwrap()),
         partition: 1,
         topic_name: "test".to_string()
     });

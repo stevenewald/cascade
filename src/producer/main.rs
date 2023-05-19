@@ -47,8 +47,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //2. for each broker/partition (effectively same), establish a connection and put it in a vector
     let mut clients = Vec::new();
     for broker in &metadata_response.brokers {
+        let usable_ip = format!("http://{}:50030", broker.ip);
+        println!("Connecting to {}", usable_ip);
         //let address = format!("{}:{}", broker.host, broker.port);
-        let broker_channel = tonic::transport::Channel::from_shared("http://127.0.0.1:50050")? //steve todo:
+        let broker_channel = tonic::transport::Channel::from_shared(usable_ip)?//127.0.0.1:50050")? //steve todo:
             //should use the ip from the broker
             .connect()
             .await?;
