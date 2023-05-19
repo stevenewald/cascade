@@ -68,6 +68,7 @@ impl KafkaMetadataService for CoordinatorServer {
         &self,
         data_received: Request<MetadataRequest>,
     ) -> Result<Response<MetadataResponse>, Status> {
+        println!("Received request for metadata");
         let topic_name: &String = &data_received.get_ref().topic_name;
 
         let topic_brokers = self.broker_metadata.get_topic_brokers(topic_name).unwrap();

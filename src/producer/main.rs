@@ -1,9 +1,4 @@
-mod coordinate {
-    //this compiles the coordinator.proto file and generates a rust code for the gRPC services
-    //we then import this rust code below
-    tonic::include_proto!("coordinate");
-}
-
+use kafka_clone::proto_imports::coordinate as coordinate;
 use coordinate::{kafka_metadata_service_client::KafkaMetadataServiceClient, MetadataRequest};
 
 mod publish {
@@ -24,9 +19,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // the port 50001 result in connection error
     // creating a channel ie connection to server
-    let coordinator_channel = tonic::transport::Channel::from_static("http://127.0.0.1:50051")
+    let coordinator_channel = tonic::transport::Channel::from_static("http://coordinator-service:50040")
         .connect()
         .await?;
+
+    println!("Connected to coordinator");
     
     // creating gRPC client for KafkaMetadataService from channel
     let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
@@ -47,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //2. for each broker/partition (effectively same), establish a connection and put it in a vector
     let mut clients = Vec::new();
     for broker in &metadata_response.brokers {
-        let usable_ip = format!("http://{}:50030", broker.ip);
+        let usable_ip = format!("http://{}:{}", broker.ip, broker.port);
         println!("Connecting to {}", usable_ip);
         //let address = format!("{}:{}", broker.host, broker.port);
         let broker_channel = tonic::transport::Channel::from_shared(usable_ip)?//127.0.0.1:50050")? //steve todo:
@@ -97,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
         // // sending data_to_broker and waiting for response
         let ack_from_broker = client.send(data_to_broker).await?.into_inner();
-        println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
+        println!("Broker ack {}", ack_from_broker.response_to_producer);
 
         partition_index += 1;
     }

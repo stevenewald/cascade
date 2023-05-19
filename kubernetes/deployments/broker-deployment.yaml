@@ -1,3 +1,4 @@
+# broker listens on port 50030
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,5 +17,5 @@ spec:
       - name: broker
         image: stevenewald/cascade_broker 
         ports:
-        - containerPort: 50050 
+        - containerPort: 50030 
 

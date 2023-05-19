@@ -1,3 +1,4 @@
+# coordinator listens on port 50040 (originally 50051)
 apiVersion: apps/v1
 kind: Deployment
 metadata:

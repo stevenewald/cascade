@@ -1,0 +1,21 @@
+# producer listens on port 50010 (for express requests) 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer 
+spec:
+  selector:
+    matchLabels:
+      app: producer 
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: producer 
+    spec:
+      containers:
+      - name: producer 
+        image: stevenewald/cascade_producer 
+        ports:
+        - containerPort: 50010 
+

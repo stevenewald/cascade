@@ -207,8 +207,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = ip_port_string.parse().unwrap();
 
     // get env variables
-    // let coord_address = "http://coordinator-service:50040";
-    let coord_address = "http://127.0.0.1:50051";
+    let coord_address = "http://coordinator-service:50040";
+    // let coord_address = "http://127.0.0.1:50051";
     println!("Coordinator is at {}", coord_address);
 
     // we have to define a service for each of our rpcs
