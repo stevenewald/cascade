@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     //1. from received metadata, copy(clone()) the partitions
-    let partitions = metadata_response.brokers.clone(); //is there a function to access just the partition we want? or is cloning the whole response fine?
+    // let partitions = metadata_response.brokers.clone(); //is there a function to access just the partition we want? or is cloning the whole response fine?
     
     //2. for each broker/partition (effectively same), establish a connection and put it in a vector
     let mut clients = Vec::new();
@@ -65,8 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // brokers[counter % len(brokers)].send(events_to_send[counter])
         // counter+=1
     //3. use the above pseudocode to loop through as the pseudocode implies
-    let events_to_send = vec!["a", "b", "c", "d"];
-    let brokers = metadata_response.brokers;
+    let events_to_send = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
+    // let brokers = metadata_response.brokers;
     let mut partition_index = 0;
 
     while partition_index < events_to_send.len() {
@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut client = clients[partition_index % clients.len()].clone(); //do i need to specify the broker still 
                                                                         //or does client takes care of that when i'm doing client_connection_to_broker below?
         // get the partition metadata for the next partition
-        let partition_metadata = partitions[partition_index % partitions.len()].clone();
+        // let partition_metadata = partitions[partition_index % partitions.len()].clone();
         
         // // converting Duration to Timestamp
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");

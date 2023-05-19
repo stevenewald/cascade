@@ -11,8 +11,7 @@ use tonic::{transport::Server, Request, Response, Status};
 
 use brokermap::{BrokerMap};
 
-use std::sync::{Mutex, Arc};
-use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 lazy_static! {
     static ref BROKER_METADATA_DICT: Arc<BrokerMap> = Arc::new(BrokerMap::new());
@@ -43,7 +42,7 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
         let broker: Broker = data_received.get_ref().broker.clone().unwrap();
         // TODO: partition is part of initialization request, but is not part of 
         // metdata request. we should probably be mapping (broker, parition) -> topic_name
-        let partition: u32 = data_received.get_ref().partition;
+        // let partition: u32 = data_received.get_ref().partition;
         let topic_name: &String = &data_received.get_ref().topic_name;
 
         if !self.broker_metadata.insert(topic_name.to_owned(), broker).unwrap() {
@@ -51,7 +50,7 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
                 status: 1,
                 message: "Broker already registered".to_string(),
             });
-            Ok::<tonic::Response<BrokerInitializationResponse>,u8>(resp);
+            return Ok::<tonic::Response<BrokerInitializationResponse>,Status>(resp);
         }
 
         println!("Broker initialized");
@@ -70,10 +69,9 @@ impl KafkaMetadataService for CoordinatorServer {
         data_received: Request<MetadataRequest>,
     ) -> Result<Response<MetadataResponse>, Status> {
         let topic_name: &String = &data_received.get_ref().topic_name;
-        let mut brokers: Vec<Broker> = Vec::new();
 
         let topic_brokers = self.broker_metadata.get_topic_brokers(topic_name).unwrap();
-        brokers = topic_brokers.iter().cloned().collect();
+        let brokers = topic_brokers.iter().cloned().collect();
         
 
         Ok(Response::new(MetadataResponse {

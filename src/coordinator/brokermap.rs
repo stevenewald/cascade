@@ -1,7 +1,6 @@
 use std::sync::{Mutex, RwLock};
 use std::collections::{HashMap, HashSet};
 use kafka_clone::proto_imports::coordinate::Broker;
-use get_if_addrs::get_if_addrs;
 
 pub struct BrokerMap(RwLock<HashMap<String, Mutex<HashSet<Broker>>>>);
 
