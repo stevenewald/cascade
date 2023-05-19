@@ -195,8 +195,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let coord_ip = dotenv::var("COORD_IP").unwrap();
     // let coord_port = dotenv::var("COORD_PORT").unwrap();
     // let coord_address = format!("http://{}:{}", coord_ip, coord_port);
-    let coord_address = "http://coordinator-service:50040";
-    // let coord_address = "http://127.0.0.1:50051";
+    // let coord_address = "http://coordinator-service:50040";
+    let coord_address = "http://coordinator-service:50051";
     // let coord_address = Box::leak(coord_address.into_boxed_str());
     println!("Coordinator is at {}", coord_address);
 

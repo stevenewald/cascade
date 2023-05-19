@@ -25,10 +25,10 @@ FROM debian:buster-slim
 
 RUN apt-get update && apt-get install -y openssl ca-certificates
 
-COPY --from=builder /usr/src/app/target/release/coordinator /usr/local/bin
+COPY --from=builder /usr/src/app/target/release/broker /usr/local/bin
 
 # only difference in consumer/coordinator deployments is the end binary run
-CMD ["coordinator"]
+CMD ["broker"]
 
-EXPOSE 50051
+EXPOSE 50050 50051
 
