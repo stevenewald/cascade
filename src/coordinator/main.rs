@@ -1,9 +1,7 @@
-mod coordinate {
-    //this compiles the publish.proto file and generates a rust code for the gRPC services
-    //we then import this rust code below
-    tonic::include_proto!("coordinate");
-}
-
+mod brokermap;
+use lazy_static::lazy_static;
+// mod crate::proto_imports;
+use kafka_clone::proto_imports::coordinate as coordinate;
 use coordinate::kafka_metadata_service_server::{KafkaMetadataService, KafkaMetadataServiceServer};
 use coordinate::kafka_broker_initialization_service_server::{KafkaBrokerInitializationService, KafkaBrokerInitializationServiceServer};
 
@@ -11,30 +9,27 @@ use coordinate::{Broker, MetadataRequest, MetadataResponse, BrokerInitialization
 
 use tonic::{transport::Server, Request, Response, Status};
 
-mod broker_dict;
+use brokermap::{BrokerMap};
 
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 use std::collections::{HashMap, HashSet};
 
-impl std::hash::Hash for Broker {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
+lazy_static! {
+    static ref BROKER_METADATA_DICT: Arc<BrokerMap> = Arc::new(BrokerMap::new());
 }
 
-impl std::cmp::Eq for Broker {}
 
 struct CoordinatorServer {
     // Map between topic and a set of brokers who hold the topic
-    broker_metadata: Mutex<HashMap<String, Mutex<HashSet<Broker>>>>
+    broker_metadata: Arc<BrokerMap> 
 }
 
 impl CoordinatorServer {
-    fn new() -> Self {
-        let broker_metadata: HashMap<String, Mutex<HashSet<Broker>>> = HashMap::new();
+    fn new(broker_dict: Arc<BrokerMap>) -> Self {
+        // let broker_metadata: HashMap<String, Mutex<HashSet<Broker>>> = HashMap::new();
 
         CoordinatorServer {
-            broker_metadata: Mutex::new(broker_metadata)
+            broker_metadata: broker_dict
         }
     }
 }
@@ -51,25 +46,13 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
         let partition: u32 = data_received.get_ref().partition;
         let topic_name: &String = &data_received.get_ref().topic_name;
 
-        let mut metadata_map = self.broker_metadata.lock().unwrap();
-
-        if metadata_map.contains_key(topic_name) {
-            let mut topic_brokers = metadata_map.get(topic_name).unwrap().lock().unwrap();
-            if !topic_brokers.contains(&broker) {
-                topic_brokers.insert(broker);
-            } else {
-                let resp = Response::new(BrokerInitializationResponse {
-                    status: 1,
-                    message: "Broker already registered".to_string(),
-                });
-                Ok::<tonic::Response<BrokerInitializationResponse>,u8>(resp);
-            }
-        } else {
-            metadata_map.insert(topic_name.to_string(), Mutex::new(HashSet::new()));
-            metadata_map.get(topic_name).unwrap().lock().unwrap().insert(broker);
+        if !self.broker_metadata.insert(topic_name.to_owned(), broker).unwrap() {
+            let resp = Response::new(BrokerInitializationResponse {
+                status: 1,
+                message: "Broker already registered".to_string(),
+            });
+            Ok::<tonic::Response<BrokerInitializationResponse>,u8>(resp);
         }
-
-        drop(metadata_map);
 
         println!("Broker initialized");
 
@@ -87,15 +70,11 @@ impl KafkaMetadataService for CoordinatorServer {
         data_received: Request<MetadataRequest>,
     ) -> Result<Response<MetadataResponse>, Status> {
         let topic_name: &String = &data_received.get_ref().topic_name;
-        let metadata_map = self.broker_metadata.lock().unwrap();
         let mut brokers: Vec<Broker> = Vec::new();
 
-        if metadata_map.contains_key(topic_name) {
-            let topic_brokers = metadata_map.get(topic_name).unwrap().lock().unwrap();
-            brokers = topic_brokers.iter().cloned().collect();
-        }
+        let topic_brokers = self.broker_metadata.get_topic_brokers(topic_name).unwrap();
+        brokers = topic_brokers.iter().cloned().collect();
         
-        drop(metadata_map);
 
         Ok(Response::new(MetadataResponse {
             brokers: brokers,
@@ -109,9 +88,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "0.0.0.0:50051".parse().unwrap();
 
     // we have to define a service for each of our rpcs
+    // let broker_metadata_dict = Box::new(BrokerMap::new());
     //andrew, these will soon be the bane of your existence (concurrency)
-    let service1 = CoordinatorServer::new();
-    let service2 = CoordinatorServer::new();
+    let service1 = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
+    let service2 = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
     println!("Coordinator listening on port {}", addr);
     // adding services to server and serving
     Server::builder()

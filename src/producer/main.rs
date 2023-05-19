@@ -24,23 +24,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // the port 50001 result in connection error
     // creating a channel ie connection to server
-    let coordinator_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
+    let coordinator_channel = tonic::transport::Channel::from_static("http://127.0.0.1:50051")
         .connect()
         .await?;
     
     // creating gRPC client for KafkaMetadataService from channel
     let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
-    
-    // creating a channel ie connection to server
-    // let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
-    //     .connect()
-    //     .await?;
-    // // creating gRPC client from channel
-    // let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
-        topic_name: "default".to_string(),
+        topic_name: "test".to_string(),
     });
     // sending metadata_request and waiting for response
     let metadata_response = kafka_metadata_service_client.get_metadata(metadata_request).await?.into_inner();
@@ -55,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut clients = Vec::new();
     for broker in &metadata_response.brokers {
         //let address = format!("{}:{}", broker.host, broker.port);
-        let broker_channel = tonic::transport::Channel::from_shared("http://[::1]:50050")? //steve todo:
+        let broker_channel = tonic::transport::Channel::from_shared("http://127.0.0.1:50050")? //steve todo:
             //should use the ip from the broker
             .connect()
             .await?;
