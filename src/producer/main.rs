@@ -1,9 +1,4 @@
-mod coordinate {
-    //this compiles the coordinator.proto file and generates a rust code for the gRPC services
-    //we then import this rust code below
-    tonic::include_proto!("coordinate");
-}
-
+use kafka_clone::proto_imports::coordinate as coordinate;
 use coordinate::{kafka_metadata_service_client::KafkaMetadataServiceClient, MetadataRequest};
 
 mod publish {
@@ -24,23 +19,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // the port 50001 result in connection error
     // creating a channel ie connection to server
-    let coordinator_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
+    let coordinator_channel = tonic::transport::Channel::from_static("http://coordinator-service:50040")
         .connect()
         .await?;
+
+    println!("Connected to coordinator");
     
     // creating gRPC client for KafkaMetadataService from channel
     let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
-    
-    // creating a channel ie connection to server
-    // let broker_channel = tonic::transport::Channel::from_static("http://[::1]:50051")
-    //     .connect()
-    //     .await?;
-    // // creating gRPC client from channel
-    // let mut client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
-        topic_name: "default".to_string(),
+        topic_name: "test".to_string(),
     });
     // sending metadata_request and waiting for response
     let metadata_response = kafka_metadata_service_client.get_metadata(metadata_request).await?.into_inner();
@@ -49,13 +39,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     //1. from received metadata, copy(clone()) the partitions
-    let partitions = metadata_response.brokers.clone(); //is there a function to access just the partition we want? or is cloning the whole response fine?
+    // let partitions = metadata_response.brokers.clone(); //is there a function to access just the partition we want? or is cloning the whole response fine?
     
     //2. for each broker/partition (effectively same), establish a connection and put it in a vector
     let mut clients = Vec::new();
     for broker in &metadata_response.brokers {
+        let usable_ip = format!("http://{}:{}", broker.ip, broker.port);
+        println!("Connecting to {}", usable_ip);
         //let address = format!("{}:{}", broker.host, broker.port);
-        let broker_channel = tonic::transport::Channel::from_shared("http://[::1]:50050")? //steve todo:
+        let broker_channel = tonic::transport::Channel::from_shared(usable_ip)?//127.0.0.1:50050")? //steve todo:
             //should use the ip from the broker
             .connect()
             .await?;
@@ -70,8 +62,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // brokers[counter % len(brokers)].send(events_to_send[counter])
         // counter+=1
     //3. use the above pseudocode to loop through as the pseudocode implies
-    let events_to_send = vec!["a", "b", "c", "d"];
-    let brokers = metadata_response.brokers;
+    let events_to_send = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
+    // let brokers = metadata_response.brokers;
     let mut partition_index = 0;
 
     while partition_index < events_to_send.len() {
@@ -84,7 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut client = clients[partition_index % clients.len()].clone(); //do i need to specify the broker still 
                                                                         //or does client takes care of that when i'm doing client_connection_to_broker below?
         // get the partition metadata for the next partition
-        let partition_metadata = partitions[partition_index % partitions.len()].clone();
+        // let partition_metadata = partitions[partition_index % partitions.len()].clone();
         
         // // converting Duration to Timestamp
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
@@ -102,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
         // // sending data_to_broker and waiting for response
         let ack_from_broker = client.send(data_to_broker).await?.into_inner();
-        println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
+        println!("Broker ack {}", ack_from_broker.response_to_producer);
 
         partition_index += 1;
     }

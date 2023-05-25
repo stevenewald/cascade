@@ -1,0 +1,21 @@
+# coordinator listens on port 50040 (originally 50051)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coordinator
+spec:
+  selector:
+    matchLabels:
+      app: coordinator
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: coordinator
+    spec:
+      containers:
+      - name: coordinator
+        image: stevenewald/cascade_coordinator
+        ports:
+        - containerPort: 50051 
+

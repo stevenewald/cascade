@@ -1,23 +1,9 @@
+# Caches dependencies for docker builds
+
 [package]
 name = "kafka_clone"
 version = "0.1.0"
 edition = "2021"
-
-[[bin]]
-name = "producer"
-path = "src/producer/main.rs"
-
-[[bin]]
-name = "consumer"
-path = "src/consumer/main.rs"
-
-[[bin]]
-name = "broker"
-path = "src/broker/main.rs"
-
-[[bin]]
-name = "coordinator"
-path = "src/coordinator/main.rs"
 
 [dependencies]
 tonic = "0.9.1"
@@ -27,8 +13,6 @@ prost-types = "0.11.8"
 chrono = "0.4.24"
 rand = "0.8.4"
 dotenv = "0.15.0"
-lazy_static = "1.4.0"
-get_if_addrs = "0.5.3"
 
 [build-dependencies]
 tonic-build = "0.9.1"
