@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 
 struct CircularBuffer {
-    buffer: Vec<String>,
+    buffer: Vec<i32>,
     write_ptr: usize,
     read_ptr: usize,
 }
@@ -78,10 +78,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //two async processes (always running)
 
     let circular_buffer = Arc::new(Mutex::new(CircularBuffer {
-        buffer: vec![String::new(); 1000],
+        buffer: vec![0; 1000],
         write_ptr: 0,
         read_ptr: 0,
     }));
+
+    // tokio::spawn(async {
+    //     receiving(circular_buffer.clone()).await;
+    // });
+
+    // tokio::spawn(async {
+    //     sending(circular_buffer).await;
+    // });
 
     // let buffer_size: usize = 1000;
     // let mut buffer: Vec<i32> = vec![0; buffer_size];
@@ -180,3 +188,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// async fn receiving(circular_buffer: Arc<Mutex<CircularBuffer>>) {
+//     // gRPC server setup and other initialization code
+
+//     loop {
+//         // Receive request and data from gRPC server
+
+//         let mut buffer = circular_buffer.lock().await;
+
+//         // Check if the next element in the buffer is 0
+//         if buffer.buffer[buffer.write_ptr]==0 {
+//             // Write the received data and advance write_ptr
+//             buffer.buffer[buffer.write_ptr] = 1;
+//             buffer.write_ptr = (buffer.write_ptr + 1) % buffer.buffer.len();
+//         } else {
+//             // Error handling
+//         }
+
+//         // Release the lock on the buffer
+//         drop(buffer);
+//     }
+// }
+
+// async fn sending(circular_buffer: Arc<Mutex<CircularBuffer>>) {
+//     loop {
+//         let mut buffer = circular_buffer.lock().await;
+
+//         // Check if the buffer length is greater than 0
+//         if buffer.buffer.len() > 0 {
+//             // Pull element from the buffer at read_ptr and send it
+
+//             // Write 0 to the element at read_ptr
+//             buffer.buffer[buffer.read_ptr] = 1;
+//             buffer.read_ptr = (buffer.read_ptr + 1) % buffer.buffer.len();
+//         } else {
+//             // Error handling
+//         }
+
+//         // Release the lock on the buffer
+//         drop(buffer);
+//     }
+// }
