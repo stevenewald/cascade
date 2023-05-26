@@ -17,3 +17,18 @@ message PublishDataToBroker {
 message BrokerToPublisherAck {
     string response_to_producer = 1;
 }
+
+
+
+message ExpressDataToProducer {
+    string data = 1;
+}
+
+
+message ProducerToExpressAck {
+    string response_to_express = 1;
+}
+
+service MyAPIService {
+  rpc ExpressToProducer(ExpressDataToProducer) returns (ProducerToExpressAck);
+}

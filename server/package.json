@@ -1,0 +1,29 @@
+{
+  "name": "kafka-clone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "proto:gen": "./server/proto-gen.sh",
+    "start": "ts-node server",
+    "client": "ts-node client"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevenewald/kafka-rewrite.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stevenewald/kafka-rewrite/issues"
+  },
+  "homepage": "https://github.com/stevenewald/kafka-rewrite#readme",
+  "devDependencies": {
+    "@grpc/grpc-js": "^1.8.14",
+    "@grpc/proto-loader": "^0.7.7",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+}
