@@ -83,13 +83,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         read_ptr: 0,
     }));
 
-    // tokio::spawn(async {
-    //     receiving(circular_buffer.clone()).await;
-    // });
+    tokio::spawn(async {
+        receiving(circular_buffer.clone()).await;
+    });
 
-    // tokio::spawn(async {
-    //     sending(circular_buffer).await;
-    // });
+    tokio::spawn(async {
+        sending(circular_buffer).await;
+    });
 
     // let buffer_size: usize = 1000;
     // let mut buffer: Vec<i32> = vec![0; buffer_size];
@@ -188,44 +188,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// async fn receiving(circular_buffer: Arc<Mutex<CircularBuffer>>) {
-//     // gRPC server setup and other initialization code
+async fn receiving(circular_buffer: Arc<Mutex<CircularBuffer>>) {
+    // gRPC server setup and other initialization code
 
-//     loop {
-//         // Receive request and data from gRPC server
+    loop {
+        // Receive request and data from gRPC server
 
-//         let mut buffer = circular_buffer.lock().await;
+        let mut buffer = circular_buffer.lock().await;
 
-//         // Check if the next element in the buffer is 0
-//         if buffer.buffer[buffer.write_ptr]==0 {
-//             // Write the received data and advance write_ptr
-//             buffer.buffer[buffer.write_ptr] = 1;
-//             buffer.write_ptr = (buffer.write_ptr + 1) % buffer.buffer.len();
-//         } else {
-//             // Error handling
-//         }
+        // Check if the next element in the buffer is 0
+        if buffer.buffer[buffer.write_ptr]==0 {
+            // Write the received data and advance write_ptr
+            buffer.buffer[buffer.write_ptr] = 1;
+            buffer.write_ptr = (buffer.write_ptr + 1) % buffer.buffer.len();
+        } else {
+            // Error handling
+        }
 
-//         // Release the lock on the buffer
-//         drop(buffer);
-//     }
-// }
+        // Release the lock on the buffer
+        drop(buffer);
+    }
+}
 
-// async fn sending(circular_buffer: Arc<Mutex<CircularBuffer>>) {
-//     loop {
-//         let mut buffer = circular_buffer.lock().await;
+async fn sending(circular_buffer: Arc<Mutex<CircularBuffer>>) {
+    loop {
+        let mut buffer = circular_buffer.lock().await;
 
-//         // Check if the buffer length is greater than 0
-//         if buffer.buffer.len() > 0 {
-//             // Pull element from the buffer at read_ptr and send it
+        // Check if the buffer length is greater than 0
+        if buffer.buffer.len() > 0 {
+            // Pull element from the buffer at read_ptr and send it
 
-//             // Write 0 to the element at read_ptr
-//             buffer.buffer[buffer.read_ptr] = 1;
-//             buffer.read_ptr = (buffer.read_ptr + 1) % buffer.buffer.len();
-//         } else {
-//             // Error handling
-//         }
+            // Write 0 to the element at read_ptr
+            buffer.buffer[buffer.read_ptr] = 1;
+            buffer.read_ptr = (buffer.read_ptr + 1) % buffer.buffer.len();
+        } else {
+            // Error handling
+        }
 
-//         // Release the lock on the buffer
-//         drop(buffer);
-//     }
-// }
+        // Release the lock on the buffer
+        drop(buffer);
+    }
+}
