@@ -13,6 +13,15 @@ use prost_types::Timestamp;
 use std::time::{SystemTime, UNIX_EPOCH};
 use rand::Rng;
 
+use tokio::sync::Mutex;
+use std::sync::Arc;
+
+
+struct CircularBuffer {
+    buffer: Vec<i32>,
+    write_ptr: usize,
+    read_ptr: usize,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -62,6 +71,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // brokers[counter % len(brokers)].send(events_to_send[counter])
         // counter+=1
     //3. use the above pseudocode to loop through as the pseudocode implies
+
+    //rough outline of program
+    //startup (already written)
+    //define size of buffer arbitrarily (1000)
+    //two async processes (always running)
+
+    let circular_buffer = Arc::new(Mutex::new(CircularBuffer {
+        buffer: vec![0; 1000],
+        write_ptr: 0,
+        read_ptr: 0,
+    }));
+
+    // tokio::spawn(async {
+    //     receiving(circular_buffer.clone()).await;
+    // });
+
+    // tokio::spawn(async {
+    //     sending(circular_buffer).await;
+    // });
+
+    // let buffer_size: usize = 1000;
+    // let mut buffer: Vec<i32> = vec![0; buffer_size];
+    // let mut write_ptr: usize = 0;
+
+    //async process 1:
+    //gRPC server that always listens for ExpressDataToProducer requests (similar to Broker)
+    //when it receives a request, write_ptr checks if next element is 0
+    //if it is, then write the received element and advance write_ptr
+    //if not, error
+
+
+    //async process 2:
+    //constantly checks if the ring buffer length>0 (i.e., requests that havent been
+    //sent to the brokers yet)
+    //pull element from the ring buffer (at read_ptr) and send it
+    //write 0 to the element at read_ptr
+    //error it out if it's full for now
+    
+
+
+
+
+
     let events_to_send = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
     // let brokers = metadata_response.brokers;
     let mut partition_index = 0;
@@ -136,3 +188,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// async fn receiving(circular_buffer: Arc<Mutex<CircularBuffer>>) {
+//     // gRPC server setup and other initialization code
+
+//     loop {
+//         // Receive request and data from gRPC server
+
+//         let mut buffer = circular_buffer.lock().await;
+
+//         // Check if the next element in the buffer is 0
+//         if buffer.buffer[buffer.write_ptr]==0 {
+//             // Write the received data and advance write_ptr
+//             buffer.buffer[buffer.write_ptr] = 1;
+//             buffer.write_ptr = (buffer.write_ptr + 1) % buffer.buffer.len();
+//         } else {
+//             // Error handling
+//         }
+
+//         // Release the lock on the buffer
+//         drop(buffer);
+//     }
+// }
+
+// async fn sending(circular_buffer: Arc<Mutex<CircularBuffer>>) {
+//     loop {
+//         let mut buffer = circular_buffer.lock().await;
+
+//         // Check if the buffer length is greater than 0
+//         if buffer.buffer.len() > 0 {
+//             // Pull element from the buffer at read_ptr and send it
+
+//             // Write 0 to the element at read_ptr
+//             buffer.buffer[buffer.read_ptr] = 1;
+//             buffer.read_ptr = (buffer.read_ptr + 1) % buffer.buffer.len();
+//         } else {
+//             // Error handling
+//         }
+
+//         // Release the lock on the buffer
+//         drop(buffer);
+//     }
+// }
