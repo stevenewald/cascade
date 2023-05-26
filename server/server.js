@@ -1,4 +1,4 @@
-//listens for external requests on port 4021
+//listens for external requests on port 50010
 const express = require("express");
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
@@ -38,6 +38,6 @@ app.post("/data", (req, res) => {
 });
 
 // Start the Express server
-app.listen(4021, () => {
+app.listen(50010, () => {
   console.log("API server is running on port 3000");
 });
