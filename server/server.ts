@@ -1,22 +1,24 @@
-import express from 'express';
-import * as grpc from '@grpc/grpc-js';
-import bodyParser from 'body-parser';
-import protoLoader from '@grpc/proto-loader';
-import { MyAPIService } from '../proto/publish.proto';
-import { ExpressDataToProducer, ProducerToExpressAck } from '../proto/publish.proto';
+const express = require('express');
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+const bodyParser = require('body-parser');
+const path = require('path');
 
-const protoPath = '../proto/publish.proto'; // Update with the correct path
+const app = express();
+const protoPath = path.join(__dirname, '../proto/publish.proto');
 const packageDefinition = protoLoader.loadSync(protoPath);
 const publishProto = grpc.loadPackageDefinition(packageDefinition).publish;
 
-const app = express();
-const client = new MyAPIService('localhost:50051', grpc.credentials.createInsecure());
+const client = new publishProto.MyAPIService('localhost:50051', grpc.credentials.createInsecure());
+
+// Parse JSON request bodies
+app.use(bodyParser.json());
 
 // API endpoint to receive data from users
 app.post('/data', (req, res) => {
     const requestData = req.body.data; // Assuming the data is sent in the request body
   
-    const request = new ExpressDataToProducer();
+    const request = new publishProto.ExpressDataToProducer();
     request.setData(requestData);
   
     // Call the gRPC client to send data to the producer
