@@ -10,7 +10,7 @@ use consume::ConsumeDataFromBroker;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // creating a channel ie connection to server
-    let channel = tonic::transport::Channel::from_static("http://[::1]:50051")
+    let channel = tonic::transport::Channel::from_static("http://broker-service:50030")
         .connect()
         .await?;
     // creating gRPC client from channel
@@ -30,5 +30,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 
 }
-
-

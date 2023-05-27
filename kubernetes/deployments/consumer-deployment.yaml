@@ -1,0 +1,21 @@
+# consumer listens on port 50099
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer
+spec:
+  selector:
+    matchLabels:
+      app: consumer
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: consumer
+    spec:
+      containers:
+      - name: consumer
+        image: andrewli2048/cascade-consumer
+        ports:
+        - containerPort: 50099 # ??
+

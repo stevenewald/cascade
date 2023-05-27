@@ -15,7 +15,6 @@ spec:
     spec:
       containers:
       - name: producer 
-        image: stevenewald/cascade_producer 
+        image: andrewli2048/cascade-producer 
         ports:
         - containerPort: 50010 
-
