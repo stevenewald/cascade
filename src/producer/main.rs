@@ -36,15 +36,33 @@ lazy_static! {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the port 50001 result in connection error
     // creating a channel ie connection to server
-    let coordinator_channel =
-        tonic::transport::Channel::from_static("http://coordinator-service:50040")
-            .connect()
-            .await?;
 
+    let mut backoff = 1;
+    let coordinator_channel;
+    loop {
+        let result = tonic::transport::Channel::from_static("http://coordinator-service:50040")
+            .connect()
+            .await;
+
+        match result {
+            Ok(channel) => {
+                println!("Connected successfully");
+                coordinator_channel = Some(channel);
+                break;  // or return, depending on your need
+            },
+            Err(e) => {
+                println!("Failed to connect: {}. Retrying in {} seconds...", e, backoff);
+                tokio::time::sleep(std::time::Duration::from_secs(backoff)).await;
+                if backoff < 60 {  // prevent the backoff time from getting too long
+                    backoff *= 2;
+                }
+            }
+        }
+    }
     println!("Connected to coordinator");
 
     // creating gRPC client for KafkaMetadataService from channel
-    let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel);
+    let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel.unwrap());
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
