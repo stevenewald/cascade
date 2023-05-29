@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "proto:gen": "./server/proto-gen.sh",
+    "proto:gen": "sudo bash proto-gen.sh",
     "start": "ts-node server",
     "client": "ts-node client"
   },
@@ -13,6 +13,7 @@
     "type": "git",
     "url": "git+https://github.com/stevenewald/kafka-rewrite.git"
   },
+  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
