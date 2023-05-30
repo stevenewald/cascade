@@ -19,19 +19,23 @@ const client = new publishProto.MyAPIService(
 app.use(bodyParser.json());
 
 // API endpoint to receive data from users
-app.post("/data", (req, res) => {
-  const requestData = req.body.data; // Assuming the data is sent in the request body
+app.get("/data", (req, res) => {
+  // const requestData = req.body.data; // Assuming the data is sent in the request body
 
-  const request = new publishProto.ExpressDataToProducer();
-  request.setData(requestData);
+  // const request = new publishProto.express_data_to_producer();
+  // request.setData(requestData);
+  console.log(JSON.stringify(req.query.data));
 
   // Call the gRPC client to send data to the producer
-  client.expressToProducer(request, (err, response) => {
+  client.expressToProducer(req.query.data, (err, response) => {
     if (err) {
       console.error("Error:", err);
       res.status(500).send("Internal Server Error");
+    } else if (response?.result?.response_to_express == 0) {
+      console.log("Result: Unsuccessful processing");
+      res.send("Data not processed");
     } else {
-      console.log("Result:", response.response_to_express);
+      console.log("Result:", response?.result?.response_to_express);
       res.send("Data processed successfully");
     }
   });
@@ -39,5 +43,5 @@ app.post("/data", (req, res) => {
 
 // Start the Express server
 app.listen(50010, () => {
-  console.log("API server is running on port 3000");
+  console.log("API server is running on port 50010");
 });

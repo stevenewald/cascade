@@ -6,8 +6,13 @@ mod publish {
     //we then import this rust code below
     tonic::include_proto!("publish");
 }
+use publish::my_api_service_server::{MyApiService, MyApiServiceServer};
 use publish::publish_to_broker_client::PublishToBrokerClient;
+
 use publish::PublishDataToBroker;
+use publish::{ExpressDataToProducer, ProducerToExpressAck};
+
+use tonic::{transport::Server, Request, Response, Status};
 
 use prost_types::Timestamp;
 use rand::Rng;
@@ -32,6 +37,74 @@ lazy_static! {
     });
 }
 
+struct ProducerServer {
+    // Get a ringbuffer
+    producer_metadata: Arc<CircularBuffer>,
+}
+
+impl ProducerServer {
+    fn new(producer_metadata: Arc<CircularBuffer>) -> Self {
+        ProducerServer {
+            producer_metadata: producer_metadata,
+        }
+    }
+}
+
+#[tonic::async_trait]
+impl MyApiService for ProducerServer {
+    async fn express_to_producer(
+        &self,
+        data_received: Request<ExpressDataToProducer>,
+    ) -> Result<Response<ProducerToExpressAck>, Status> {
+        // gRPC server setup and other initialization code
+        //setup new grpc server (will not reuse a ton of code)
+        //that receives ExpressDataToProducer and writes the string event
+        // Receive request and data from gRPC server
+
+        let mut buffer_lock = self.producer_metadata.buffer.lock().await;
+        let mut write_ptr_lock = self.producer_metadata.write_ptr.lock().await;
+
+        // Check if the next element in the buffer is 0
+        if buffer_lock[*write_ptr_lock] == 0 {
+            // Write the received data and advance write_ptr
+            buffer_lock[*write_ptr_lock] = data_received.get_ref().data;
+            *write_ptr_lock = (*write_ptr_lock + 1) % buffer_lock.len();
+            println!("Successfully processed data");
+            Ok(tonic::Response::new(ProducerToExpressAck {
+                response_to_express: 1,
+            }))
+        } else {
+            println!("Unsuccessfully processed data");
+            // Error handling
+            Ok(tonic::Response::new(ProducerToExpressAck {
+                response_to_express: 0,
+            }))
+        }
+        // The lock on the buffer will be automatically released when `buffer` goes out of scope
+    }
+}
+
+async fn sending(circular_buffer: Arc<CircularBuffer>) {
+    //copy over a lot of code
+
+    loop {
+        let mut buffer_lock = circular_buffer.buffer.lock().await;
+        let mut read_ptr_lock = circular_buffer.read_ptr.lock().await;
+
+        // Check if the buffer length is greater than 0
+        if buffer_lock.len() > 0 {
+            // Pull element from the buffer at read_ptr and send it
+
+            // Write 0 to the element at read_ptr
+            buffer_lock[*read_ptr_lock] = 1;
+
+            *read_ptr_lock = (*read_ptr_lock + 1) % buffer_lock.len();
+        } else {
+            // Error handling
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the port 50001 result in connection error
@@ -48,12 +121,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(channel) => {
                 println!("Connected successfully");
                 coordinator_channel = Some(channel);
-                break;  // or return, depending on your need
-            },
+                break; // or return, depending on your need
+            }
             Err(e) => {
-                println!("Failed to connect: {}. Retrying in {} seconds...", e, backoff);
+                println!(
+                    "Failed to connect: {}. Retrying in {} seconds...",
+                    e, backoff
+                );
                 tokio::time::sleep(std::time::Duration::from_secs(backoff)).await;
-                if backoff < 60 {  // prevent the backoff time from getting too long
+                if backoff < 60 {
+                    // prevent the backoff time from getting too long
                     backoff *= 2;
                 }
             }
@@ -62,7 +139,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connected to coordinator");
 
     // creating gRPC client for KafkaMetadataService from channel
-    let mut kafka_metadata_service_client = KafkaMetadataServiceClient::new(coordinator_channel.unwrap());
+    let mut kafka_metadata_service_client =
+        KafkaMetadataServiceClient::new(coordinator_channel.unwrap());
 
     // creating a new Request to send to KafkaMetadataService
     let metadata_request = tonic::Request::new(MetadataRequest {
@@ -96,43 +174,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         clients.push(client_connection_to_broker); //is client and broker the same in this case?
     }
 
-    // events_to_send (made up) = [a, b, c, d]
-    // brokers = a vector from metadata, ie.: [1, 2, 3, 4]
-    // counter = 0
-    // while counter < len(events_to_send):
-    // brokers[counter % len(brokers)].send(events_to_send[counter])
-    // counter+=1
-    //3. use the above pseudocode to loop through as the pseudocode implies
-
-    //rough outline of program
-    //startup (already written)
-    //define size of buffer arbitrarily (1000)
-    //two async processes (always running)
-
-    tokio::spawn(async {
-        receiving(Arc::clone(&CIRCULAR_BUFFER)).await;
-    });
+    // tokio::spawn(async {
+    //     express_to_producer(Arc::clone(&CIRCULAR_BUFFER)).await;
+    // });
 
     tokio::spawn(async {
         sending(Arc::clone(&CIRCULAR_BUFFER)).await;
     });
-
-    // let buffer_size: usize = 1000;
-    // let mut buffer: Vec<i32> = vec![0; buffer_size];
-    // let mut write_ptr: usize = 0;
-
-    //async process 1:
-    //gRPC server that always listens for ExpressDataToProducer requests (similar to Broker)
-    //when it receives a request, write_ptr checks if next element is 0
-    //if it is, then write the received element and advance write_ptr
-    //if not, error
-
-    //async process 2:
-    //constantly checks if the ring buffer length>0 (i.e., requests that havent been
-    //sent to the brokers yet)
-    //pull element from the ring buffer (at read_ptr) and send it
-    //write 0 to the element at read_ptr
-    //error it out if it's full for now
 
     let events_to_send = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
     // let brokers = metadata_response.brokers;
@@ -173,79 +221,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         partition_index += 1;
     }
 
-    // let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
+    let addr = "0.0.0.0:50010".parse().unwrap();
+    let service: ProducerServer = ProducerServer::new(Arc::clone(&CIRCULAR_BUFFER));
+    Server::builder()
+        .add_service(MyApiServiceServer::new(service))
+        .serve(addr)
+        .await?;
 
-    // // converting Duration to Timestamp
-    // let timestamp = Timestamp {
-    //     seconds: now.as_secs() as i64,
-    //     nanos: now.subsec_nanos() as i32,
-    // };
-
-    // // creating a new Request to send to broker
-    // let mut rng = rand::thread_rng();
-    // let data_to_broker = tonic::Request::new(PublishDataToBroker {
-    //     event_name: String::from("default"),
-    //     timestamp: Some(timestamp),
-    //     number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
-    // });
-    // // sending data_to_broker and waiting for response
-    // let ack_from_broker = client_connection_to_broker.send(data_to_broker).await?.into_inner();
-    // println!("Received acknowledgement from broker with message: {}", ack_from_broker.response_to_producer);
-
-    // make a for loop that runs for 10k iterations (sleep .01 seconds after sending each event, so ~100hz)
-    // send cpu usage (as a float assuming we can get good precision on cpu data) 100x per second
-    // make it asynchronous (can remove the .await? to make it asynchronous)
-    // look into whether there's a way (and if it's a good idea, maybe its not) to not have the broker send a response
-
-    //this is what it would look like in python
-    // for i in range(10000):
-    // data_to_broker = ...
-    // client_connection_to_broker.send(data_to_broker)
-    // sleep(0.01)
-
-    // if you remove the sleep functions, what happens (does it crash, if not, how many events/sec can it send)
-    // also worth experimenting with using the same timestamp
-
+    // server.await.unwrap();
     Ok(())
-}
-
-async fn receiving(circular_buffer: Arc<CircularBuffer>) {
-    // gRPC server setup and other initialization code
-
-    loop {
-        // Receive request and data from gRPC server
-
-        let mut buffer_lock = circular_buffer.buffer.lock().await;
-        let mut write_ptr_lock = circular_buffer.write_ptr.lock().await;
-
-        // Check if the next element in the buffer is 0
-        if buffer_lock[*write_ptr_lock] == 0 {
-            // Write the received data and advance write_ptr
-            buffer_lock[*write_ptr_lock] = 1;
-            *write_ptr_lock = (*write_ptr_lock + 1) % buffer_lock.len();
-        } else {
-            // Error handling
-        }
-
-        // The lock on the buffer will be automatically released when `buffer` goes out of scope
-    }
-}
-
-async fn sending(circular_buffer: Arc<CircularBuffer>) {
-    loop {
-        let mut buffer_lock = circular_buffer.buffer.lock().await;
-        let mut read_ptr_lock = circular_buffer.read_ptr.lock().await;
-
-        // Check if the buffer length is greater than 0
-        if buffer_lock.len() > 0 {
-            // Pull element from the buffer at read_ptr and send it
-
-            // Write 0 to the element at read_ptr
-            buffer_lock[*read_ptr_lock] = 1;
-
-            *read_ptr_lock = (*read_ptr_lock + 1) % buffer_lock.len();
-        } else {
-            // Error handling
-        }
-    }
 }
