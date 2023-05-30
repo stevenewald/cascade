@@ -5,15 +5,21 @@ package publish;
 import "google/protobuf/timestamp.proto";
 
 service PublishToBroker {
-    rpc Send (PublishDataToBroker) returns (BrokerToPublisherAck);
+  rpc Send(PublishDataToBroker) returns (BrokerToPublisherAck);
 }
 
 message PublishDataToBroker {
-    string event_name = 1;
-    google.protobuf.Timestamp timestamp = 2;
-    int32 number = 3;
+  string event_name = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  int32 number = 3;
 }
 
-message BrokerToPublisherAck {
-    string response_to_producer = 1;
+message BrokerToPublisherAck { string response_to_producer = 1; }
+
+message ExpressDataToProducer { int32 data = 1; }
+
+message ProducerToExpressAck { int32 response_to_express = 1; }
+
+service MyAPIService {
+  rpc ExpressToProducer(ExpressDataToProducer) returns (ProducerToExpressAck);
 }

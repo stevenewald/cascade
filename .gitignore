@@ -22,3 +22,4 @@ target/
 *.pdb
 
 index.table
+node_modules

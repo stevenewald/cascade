@@ -30,5 +30,5 @@ COPY --from=builder /usr/src/app/target/release/producer /usr/local/bin
 # only difference in consumer/coordinator deployments is the end binary run
 CMD ["producer"]
 
-EXPOSE 50010
+EXPOSE 50090
 
