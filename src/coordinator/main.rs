@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // we have to define a service for each of our rpcs
     // let broker_metadata_dict = Box::new(BrokerMap::new());
     //andrew, these will soon be the bane of your existence (concurrency)
-    let service1 = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
+    let service1: CoordinatorServer = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
     let service2 = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
     println!("Coordinator listening on port {}", addr);
     // adding services to server and serving

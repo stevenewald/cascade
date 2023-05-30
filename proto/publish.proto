@@ -21,12 +21,12 @@ message BrokerToPublisherAck {
 
 
 message ExpressDataToProducer {
-    string data = 1;
+    int32 data = 1;
 }
 
 
 message ProducerToExpressAck {
-    string response_to_express = 1;
+    int32 response_to_express = 1;
 }
 
 service MyAPIService {
