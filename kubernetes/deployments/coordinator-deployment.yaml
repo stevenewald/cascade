@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: coordinator
-        image: stevenewald/cascade_coordinator
+        image: andrewli2048/cascade-coordinator
         ports:
         - containerPort: 50051 
 

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: broker
-        image: stevenewald/cascade_broker 
+        image: andrewli2048/cascade-broker
         ports:
         - containerPort: 50030 
 
