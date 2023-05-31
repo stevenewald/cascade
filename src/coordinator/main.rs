@@ -11,7 +11,13 @@ use tonic::{transport::Server, Request, Response, Status};
 
 use brokermap::{BrokerMap};
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::sync::{Arc, Mutex};
+
+use std::thread;
+
+use tokio::time::{sleep, Duration};
 
 lazy_static! {
     static ref BROKER_METADATA_DICT: Arc<BrokerMap> = Arc::new(BrokerMap::new());
@@ -20,7 +26,7 @@ lazy_static! {
 
 struct CoordinatorServer {
     // Map between topic and a set of brokers who hold the topic
-    broker_metadata: Arc<BrokerMap> 
+    broker_metadata: Arc<BrokerMap>,
 }
 
 impl CoordinatorServer {
@@ -46,7 +52,7 @@ impl KafkaBrokerInitializationService for CoordinatorServer {
         let topic_name: &String = &data_received.get_ref().topic_name;
 
         if !self.broker_metadata.insert(topic_name.to_owned(), broker).unwrap() {
-            let resp = Response::new(BrokerInitializationResponse {
+;            let resp = Response::new(BrokerInitializationResponse {
                 status: 1,
                 message: "Broker already registered".to_string(),
             });
@@ -81,6 +87,46 @@ impl KafkaMetadataService for CoordinatorServer {
     }
 }
 
+async fn poll_brokers(metadata_dict: Arc<BrokerMap>) {
+    loop {
+        let map_clone = metadata_dict.lockless_clone();
+        let mut dead_brokers: Vec<(String, Broker)> = Vec::new();
+
+        // Ping all brokers
+        // TODO: ping with multiple threads
+        // TODO: add threshold so broker isn't removed after single ping
+        for (key, value) in map_clone.iter() {
+            for broker in value.iter() {
+                let broker_ip = (broker.ip.to_string() + ":" + &broker.port.to_string()).parse().unwrap();
+
+                let ping_result = ping::ping(broker_ip, None, None, None, None, None);
+
+                match ping_result {
+                    Ok(response) => {
+                        continue;
+                    }
+                    Err(error) => {
+                       dead_brokers.push((key.to_string(), broker.clone()));
+                    }
+                }
+            }
+        }
+
+        for e in dead_brokers.iter() {
+            let topic_name = &e.0;
+            let broker =&e.1;
+
+            match metadata_dict.remove(&topic_name, &broker) {
+                Ok(contents) => continue,
+                Err(error) => continue,
+            }
+        }
+        
+        // sleep for a minute
+        sleep(Duration::from_millis(6000)).await;
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // defining address for our server
@@ -92,6 +138,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service1 = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
     let service2 = CoordinatorServer::new(Arc::clone(&BROKER_METADATA_DICT));
     println!("Coordinator listening on port {}", addr);
+
+    let _ = tokio::spawn(async {
+        poll_brokers(Arc::clone(&BROKER_METADATA_DICT)).await;
+    });
+
     // adding services to server and serving
     Server::builder()
         .add_service(KafkaBrokerInitializationServiceServer::new(service1))

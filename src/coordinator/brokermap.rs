@@ -49,5 +49,24 @@ impl BrokerMap {
 
         Err("Topic not found".into())
     }
+
+    // Makes a clone of the contents
+    pub fn lockless_clone(&self) -> HashMap<String, HashSet<Broker>> {
+        let map = self.0.read().unwrap();
+        let mut clone_map = HashMap::new();
+
+        for (key, value) in map.iter() {
+            let set = value.lock().unwrap();
+            let mut set_clone = HashSet::new();
+
+            for e in set.iter() {
+                set_clone.insert(e.clone());
+            }
+
+            clone_map.insert(key.clone(), set_clone);
+        }
+
+        return clone_map;
+    }
 }
 

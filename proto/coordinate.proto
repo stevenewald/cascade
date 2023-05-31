@@ -36,6 +36,12 @@ message BrokerInitializationRequest {
   string topic_name = 3; 
 }
 
+message BrokerTopicSwitch {
+  Broker broker = 1;
+  string old_topic_name = 2;
+  string new_topic_name = 3;
+}
+
 // The BrokerInitializationResponse message represents the status of the broker initialization.
 message BrokerInitializationResponse {
   enum StatusCode {

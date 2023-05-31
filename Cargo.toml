@@ -29,7 +29,9 @@ rand = "0.8.4"
 dotenv = "0.15.0"
 lazy_static = "1.4.0"
 get_if_addrs = "0.5.3"
+ping = "0.4.1"
 
 [build-dependencies]
 tonic-build = "0.9.1"
 protoc = "2.28.0" 
+
