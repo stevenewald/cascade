@@ -7,7 +7,7 @@ spec:
   selector:
     matchLabels:
       app: producer 
-  replicas: 2
+  replicas: 1
   template:
     metadata:
       labels:
@@ -15,6 +15,7 @@ spec:
     spec:
       containers:
       - name: producer 
-        image: andrewli2048/cascade-producer 
+        image: stevenewald/cascade_producer 
         ports:
         - containerPort: 50010 
+        imagePullPolicy: Never

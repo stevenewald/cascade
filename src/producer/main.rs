@@ -1,5 +1,6 @@
 use coordinate::{kafka_metadata_service_client::KafkaMetadataServiceClient, MetadataRequest};
-use kafka_clone::proto_imports::coordinate;
+use kafka_clone::proto_imports::coordinate::{self};
+use rand::SeedableRng;
 
 mod publish {
     //this compiles the publish.proto file and generates a rust code for the gRPC services
@@ -9,7 +10,7 @@ mod publish {
 use publish::my_api_service_server::{MyApiService, MyApiServiceServer};
 use publish::publish_to_broker_client::PublishToBrokerClient;
 
-use publish::PublishDataToBroker;
+use publish::{PublishDataToBroker, BrokerToPublisherAck};
 use publish::{ExpressDataToProducer, ProducerToExpressAck};
 
 use tonic::{transport::Server, Request, Response, Status};
@@ -84,19 +85,133 @@ impl MyApiService for ProducerServer {
     }
 }
 
+//after running
+//kubectl get pods
+//if anything isn't running correctly, kubectl logs <pod_name>
+//to test:
+//1. docker build -t stevenewald/cascade_producer -f src/producer/Dockerfile .
+//2. kubectl get pods
+//3. kubectl delete <podname>
+
+
 async fn sending(circular_buffer: Arc<CircularBuffer>) {
     //copy over a lot of code
 
+    //initialization stuff
+    // let brokers = metadata_response.brokers;
+    let mut count = 0;
+
+    let mut backoff = 1;
+
+    // establish connection to coordinator
+    let coordinator_channel;
     loop {
+        let result = tonic::transport::Channel::from_static("http://coordinator-service:50040")
+            .connect()
+            .await;
+
+        match result {
+            Ok(channel) => {
+                println!("Connected successfully");
+                coordinator_channel = Some(channel);
+                break; // or return, depending on your need
+            }
+            Err(e) => {
+                println!(
+                    "Failed to connect: {}. Retrying in {} seconds...",
+                    e, backoff
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(backoff)).await;
+                if backoff < 60 {
+                    // prevent the backoff time from getting too long
+                    backoff *= 2;
+                }
+            }
+        }
+    }
+    println!("Connected to coordinator");
+
+    // creating gRPC client for KafkaMetadataService from channel
+    let mut kafka_metadata_service_client =
+        KafkaMetadataServiceClient::new(coordinator_channel.unwrap());
+
+    // creating a new Request to send to KafkaMetadataService
+    let metadata_request = tonic::Request::new(MetadataRequest {
+        topic_name: "test".to_string(),
+    });
+    // sending metadata_request and waiting for response
+    let metadata_response = match kafka_metadata_service_client.get_metadata(metadata_request).await {
+        Ok(response) => response.into_inner(),
+        Err(err) => {
+            println!("Error: {:?}", err);
+            // Handle the error or return an appropriate value
+            return ();
+        }
+    };
+    let num_partitions = metadata_response.brokers.len();
+    println!(
+        "Received metadata from coordinator with {} partitions.",
+        num_partitions
+    );
+    let mut clients = Vec::new();
+    for broker in &metadata_response.brokers {
+        let usable_ip = format!("http://{}:{}", broker.ip, broker.port);
+        println!("Connecting to {}", usable_ip);
+        //let address = format!("{}:{}", broker.host, broker.port);
+        let broker_channel: tonic::transport::Channel = match tonic::transport::Channel::from_shared(usable_ip) {
+            Ok(endpoint) => match endpoint.connect().await {
+                Ok(channel) => channel,
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    std::panic::panic_any("Couldn't fetch brokers");
+                }
+            },
+            Err(err) => {
+                std::panic::panic_any(err);
+            }
+        };
+        let client_connection_to_broker = PublishToBrokerClient::new(broker_channel);
+        clients.push(client_connection_to_broker); //is client and broker the same in this case?
+    }
+
+    loop {
+
+        let mut client = clients[count % clients.len()].clone(); 
         let mut buffer_lock = circular_buffer.buffer.lock().await;
         let mut read_ptr_lock = circular_buffer.read_ptr.lock().await;
 
         // Check if the buffer length is greater than 0
-        if buffer_lock.len() > 0 {
+        if buffer_lock[*read_ptr_lock] != 0  {
             // Pull element from the buffer at read_ptr and send it
+            // // converting Duration to Timestamp
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            let timestamp = Timestamp {
+                seconds: now.as_secs() as i64,
+                nanos: now.subsec_nanos() as i32,
+            };
+            // // creating a new Request to send to broker
+            let mut rng = rand::rngs::StdRng::from_entropy();
+            let data_to_broker = tonic::Request::new(PublishDataToBroker {
+                event_name: buffer_lock[*read_ptr_lock].to_string(),
+                timestamp: Some(timestamp),
+                number: rng.gen::<i32>(), // this is where the cpu usage (%) will go, make it a float though
+            });
+            let ack_from_broker:BrokerToPublisherAck  = match client.send(data_to_broker).await {
+                Ok(response) => response.into_inner(),
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    // Handle the error or return an appropriate value
+                    return;
+                }
+            };
+            println!("Broker ack {}", ack_from_broker.response_to_producer);
+
+            count += 1;
 
             // Write 0 to the element at read_ptr
-            buffer_lock[*read_ptr_lock] = 1;
+            buffer_lock[*read_ptr_lock] = 0;
 
             *read_ptr_lock = (*read_ptr_lock + 1) % buffer_lock.len();
         } else {
@@ -178,9 +293,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     express_to_producer(Arc::clone(&CIRCULAR_BUFFER)).await;
     // });
 
-    tokio::spawn(async {
-        sending(Arc::clone(&CIRCULAR_BUFFER)).await;
-    });
+    tokio::spawn(sending(Arc::clone(&CIRCULAR_BUFFER)));
 
     let events_to_send = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
     // let brokers = metadata_response.brokers;
